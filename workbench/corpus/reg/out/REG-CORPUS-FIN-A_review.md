@@ -1,6 +1,6 @@
 # REG-CORPUS-FIN-A — finance — SME review sheet (170 Q)
 
-Levels {'L1': 34, 'L2': 51, 'L3': 51, 'L4': 34} · key positions {'B': 43, 'D': 42, 'C': 42, 'A': 43} · microtopics covered 50/100
+Levels {'L1': 34, 'L2': 51, 'L3': 51, 'L4': 34} · key positions {'B': 43, 'D': 42, 'C': 42, 'A': 43} · microtopics covered 50/111
 Status `ai_drafted` / `draft`. ⚠ = verify_fact (statute / rate / threshold — check against current official text).
 
 

@@ -1,0 +1,4139 @@
+{
+  "batch": "REG-CORPUS-ACT-OTH",
+  "subject": "financial-sector-acts",
+  "count": 67,
+  "levels": {
+    "L1": 13,
+    "L2": 21,
+    "L3": 20,
+    "L4": 13
+  },
+  "questions": [
+    {
+      "id": "ACTO-001",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-residential-status-under-s-2-v-a6cc6289",
+      "microtopic_name": "FEMA — residential status under s.2(v)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under s.2(v) of FEMA, the basic day-count test that makes an individual a \"person resident in India\" for FY 2026-27 is that he resided in India for:",
+      "explanation": {
+        "steps": [
+          "s.2(v)(i): a person residing in India for more than 182 days during the course of the preceding financial year.",
+          "The test looks back to the preceding FY (FY 2025-26 for FY 2026-27), and 182 days exactly is not enough.",
+          "Even if the count is met, the purpose-based exclusions in s.2(v)(i)(A)/(B) can override it."
+        ],
+        "formula_used": "Resident (individual) = > 182 days in preceding FY, subject to purpose exclusions",
+        "trap": "Two traps: 'preceding' FY, and 'more than' 182 days."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.2(v)"
+        }
+      ],
+      "options": [
+        {
+          "text": "182 days or more during FY 2026-27",
+          "is_correct": false,
+          "error": "income-tax style current-year test imported",
+          "label": "A"
+        },
+        {
+          "text": "More than 182 days during FY 2026-27",
+          "is_correct": false,
+          "error": "current FY used instead of the preceding FY",
+          "label": "B"
+        },
+        {
+          "text": "Not less than 120 days during FY 2025-26",
+          "is_correct": false,
+          "error": "LLP designated-partner residency test (120 days) imported",
+          "label": "C"
+        },
+        {
+          "text": "More than 182 days during FY 2025-26",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTO-002",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-civil-character-and-contrast-with-fera-05cf5ce6",
+      "microtopic_name": "FEMA — civil character and contrast with FERA",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "A contravention of a provision of FEMA (other than the special regime for assets held abroad) is, by its basic design:",
+      "explanation": {
+        "steps": [
+          "FEMA replaced FERA from 1 June 2000 and converted foreign-exchange violations into civil contraventions.",
+          "s.13 provides monetary penalty after adjudication under s.16; imprisonment arises only as civil imprisonment for non-payment of penalty (s.14).",
+          "FERA treated violations as criminal offences and presumed culpable mental state."
+        ],
+        "formula_used": "FEMA: contravention → adjudication → penalty (civil)",
+        "trap": "Civil imprisonment under s.14 is a recovery tool, not punishment for the contravention."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.13, s.14, s.16; FERA 1973, s.59"
+        }
+      ],
+      "options": [
+        {
+          "text": "A civil wrong visited with a monetary penalty imposed on adjudication",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "A criminal offence punishable with imprisonment and fine on prosecution",
+          "is_correct": false,
+          "error": "FERA, 1973 approach",
+          "label": "B"
+        },
+        {
+          "text": "An offence with a statutory presumption of culpable mental state",
+          "is_correct": false,
+          "error": "FERA s.59 presumption carried over",
+          "label": "C"
+        },
+        {
+          "text": "A cognizable, non-bailable offence investigated by the police",
+          "is_correct": false,
+          "error": "confused with PMLA-type offences",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-003",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-current-and-capital-account-transactions-s-5-s-6-and-lrs-cea4e175",
+      "microtopic_name": "FEMA — current and capital account transactions (s.5, s.6) and LRS",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "After the Finance Act, 2015 amendment to s.6 of FEMA (effective 2019), capital account transactions involving debt instruments are regulated by:",
+      "explanation": {
+        "steps": [
+          "s.6(2): RBI, in consultation with the Central Government, specifies permissible capital account transactions involving debt instruments (FEM (Debt Instruments) Regulations, 2019).",
+          "s.6(2A): the Central Government, in consultation with RBI, prescribes transactions NOT involving debt instruments (FEM (Non-debt Instruments) Rules, 2019)."
+        ],
+        "formula_used": "Debt → RBI (consulting GoI); non-debt → GoI (consulting RBI)",
+        "trap": "The two limbs are mirror images; candidates swap them."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.6(2), s.6(2A) (Finance Act 2015)"
+        }
+      ],
+      "options": [
+        {
+          "text": "The RBI, in consultation with the Central Government",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "The Central Government alone, without consulting the RBI",
+          "is_correct": false,
+          "error": "consultation requirement dropped",
+          "label": "B"
+        },
+        {
+          "text": "SEBI, in consultation with the RBI",
+          "is_correct": false,
+          "error": "securities regulator confused with FEMA authority",
+          "label": "C"
+        },
+        {
+          "text": "The Central Government, in consultation with the RBI",
+          "is_correct": false,
+          "error": "that is the rule for non-debt instruments (s.6(2A))",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-004",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-authorised-persons-and-rbi-directions-s-10-to-s-12-6a68c4c3",
+      "microtopic_name": "FEMA — authorised persons and RBI directions (s.10 to s.12)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Authorisation to act as an authorised dealer, money changer or off-shore banking unit under s.10 of FEMA is granted by:",
+      "explanation": {
+        "steps": [
+          "s.10(1): the Reserve Bank may, on an application made to it, authorise any person to be an authorised dealer, money changer, off-shore banking unit or any other authorised person.",
+          "RBI can also revoke the authorisation under s.10(3)."
+        ],
+        "formula_used": "s.10: RBI authorises and revokes",
+        "trap": "The Directorate of Enforcement investigates; it does not license."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.10(1)"
+        }
+      ],
+      "options": [
+        {
+          "text": "The Reserve Bank of India, on an application made to it",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "The Directorate of Enforcement, on an application made to it",
+          "is_correct": false,
+          "error": "enforcement agency confused with regulator",
+          "label": "B"
+        },
+        {
+          "text": "FEDAI, as the self-regulatory body of dealers",
+          "is_correct": false,
+          "error": "industry body mistaken for statutory authority",
+          "label": "C"
+        },
+        {
+          "text": "The Central Government, on the RBI's recommendation",
+          "is_correct": false,
+          "error": "Central Government's s.6(2A)/s.5 role confused",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-005",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-adjudication-and-appeals-f3c94c7a",
+      "microtopic_name": "FEMA — adjudication and appeals",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "An appeal against an order of the Appellate Tribunal under FEMA lies to the High Court:",
+      "explanation": {
+        "steps": [
+          "s.35: any person aggrieved by a decision of the Appellate Tribunal may appeal to the High Court within 60 days on any question of law arising out of such order.",
+          "The High Court may allow a further period not exceeding 60 days for sufficient cause."
+        ],
+        "formula_used": "Tribunal → High Court: 60 days, law only",
+        "trap": "Appeals to the Tribunal are 45 days; to the High Court 60 days."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.35"
+        }
+      ],
+      "options": [
+        {
+          "text": "Within 60 days, on questions of fact and law",
+          "is_correct": false,
+          "error": "s.35 limited to questions of law",
+          "label": "A"
+        },
+        {
+          "text": "Within 45 days, on questions of fact and law",
+          "is_correct": false,
+          "error": "Appellate Tribunal's own 45-day limit applied",
+          "label": "B"
+        },
+        {
+          "text": "Within 90 days, on a question of law",
+          "is_correct": false,
+          "error": "90-day period of s.14 (penalty payment) confused",
+          "label": "C"
+        },
+        {
+          "text": "Within 60 days, on a question of law",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTO-006",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-residential-status-under-s-2-v-a6cc6289",
+      "microtopic_name": "FEMA — residential status under s.2(v)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Mr. Varun Iyer, an Indian citizen working in India, was physically in India during the following periods:\n\n| Spell | Arrived | Left |\n|---|---|---|\n| 1 | 12 May 2025 | 20 Sep 2025 |\n| 2 | 8 Feb 2026 | stayed on (in India on 31 Mar 2026) |\n| 3 | (continuing) | 30 Jun 2026 |\n\nCount both the day of arrival and the day of departure as days in India. For deciding whether the day-count limb of s.2(v) is met for FY 2026-27, the correct count and result are:",
+      "explanation": {
+        "steps": [
+          "Relevant year = preceding FY 2025-26 (1 Apr 2025 – 31 Mar 2026).",
+          "Spell 1: 12 May 2025 – 20 Sep 2025 = 132 days; Spell 2 up to 31 Mar 2026 = 52 days.",
+          "Total = 184 days > 182 → the day-count limb is satisfied (spells need not be continuous).",
+          "Days from 1 Apr 2026 (91) belong to FY 2026-27 and are irrelevant for that year's status."
+        ],
+        "formula_used": "Days in preceding FY > 182",
+        "trap": "Aggregate all spells within the preceding FY only."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.2(v)(i)"
+        }
+      ],
+      "options": [
+        {
+          "text": "182 days — day-count limb not satisfied",
+          "is_correct": false,
+          "error": "arrival days excluded despite the counting rule given",
+          "label": "A"
+        },
+        {
+          "text": "91 days — not satisfied, counted in FY 2026-27",
+          "is_correct": false,
+          "error": "current FY counted instead of preceding FY",
+          "label": "B"
+        },
+        {
+          "text": "184 days — not satisfied, as the stay was not continuous",
+          "is_correct": false,
+          "error": "continuity wrongly required",
+          "label": "C"
+        },
+        {
+          "text": "184 days — day-count limb satisfied",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTO-007",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-residential-status-under-s-2-v-a6cc6289",
+      "microtopic_name": "FEMA — residential status under s.2(v)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Ms. Neha Rao lived in India throughout FY 2025-26. On 10 Aug 2026 she leaves India to take up employment with a company in Dubai. Her status under FEMA on 11 Aug 2026 is:",
+      "explanation": {
+        "steps": [
+          "s.2(v)(i)(A): a person who has gone out of India for or on taking up employment outside India is excluded from 'person resident in India', even if he stayed more than 182 days in the preceding FY.",
+          "The exclusion operates from the time she goes out for employment."
+        ],
+        "formula_used": "Resident test = day count − purpose exclusions",
+        "trap": "Purpose (employment abroad) overrides the day count."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.2(v)(i)(A)"
+        }
+      ],
+      "options": [
+        {
+          "text": "Person resident in India for all of FY 2026-27, as she stayed over 182 days in FY 2025-26",
+          "is_correct": false,
+          "error": "day count applied without the employment exclusion",
+          "label": "A"
+        },
+        {
+          "text": "Person resident in India until 31 Mar 2027; non-resident from 1 Apr 2027",
+          "is_correct": false,
+          "error": "status wrongly fixed for the whole FY",
+          "label": "B"
+        },
+        {
+          "text": "Person resident in India until she completes 182 days outside India",
+          "is_correct": false,
+          "error": "non-residence wrongly made to need 182 days abroad",
+          "label": "C"
+        },
+        {
+          "text": "Person resident outside India, from the time she left India for employment",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTO-008",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-current-and-capital-account-transactions-s-5-s-6-and-lrs-cea4e175",
+      "microtopic_name": "FEMA — current and capital account transactions (s.5, s.6) and LRS",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Which one of the following, undertaken by a person resident in India, is a current account transaction under FEMA?",
+      "explanation": {
+        "steps": [
+          "s.2(e): a capital account transaction alters assets or liabilities, including contingent liabilities, outside India of persons resident in India (or in India of non-residents).",
+          "s.2(j): current account transactions include expenses for foreign travel, education and medical care of parents, spouse and children.",
+          "Flat abroad, ECB and a guarantee all alter assets/liabilities → capital account."
+        ],
+        "formula_used": "Alters foreign assets/liabilities (incl. contingent) → capital; else current",
+        "trap": "A guarantee is a contingent liability, so it is capital account."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.2(e), s.2(j)"
+        }
+      ],
+      "options": [
+        {
+          "text": "Raising an external commercial borrowing from an overseas lender",
+          "is_correct": false,
+          "error": "creates a liability outside India → capital",
+          "label": "A"
+        },
+        {
+          "text": "Purchase of a residential flat in London for personal use",
+          "is_correct": false,
+          "error": "creates an asset outside India → capital account",
+          "label": "B"
+        },
+        {
+          "text": "Guaranteeing a loan taken by a non-resident from a foreign bank",
+          "is_correct": false,
+          "error": "contingent liability outside India → capital",
+          "label": "C"
+        },
+        {
+          "text": "Remittance for medical treatment abroad of the remitter's spouse",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTO-009",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-current-and-capital-account-transactions-s-5-s-6-and-lrs-cea4e175",
+      "microtopic_name": "FEMA — current and capital account transactions (s.5, s.6) and LRS",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Assume the Liberalised Remittance Scheme (LRS) ceiling is USD 2,50,000 per resident individual per financial year, covering both permissible current and capital account purposes. Mrs. Kavya Menon's remittances:\n\n| Date | Purpose | Amount |\n|---|---|---:|\n| 20 Feb 2026 | Gift to a relative abroad | USD 30,000 |\n| 15 May 2026 | Tuition and living expenses of daughter studying abroad | USD 80,000 |\n| 02 Jul 2026 | Purchase of listed shares abroad | USD 1,00,000 |\n| 18 Sep 2026 | Gift to a nephew abroad | USD 45,000 |\n\nNo amount beyond the ceiling was claimed on the basis of a university's estimate. The unused LRS headroom for the rest of FY 2026-27 is:",
+      "explanation": {
+        "steps": [
+          "Only FY 2026-27 remittances count: 80,000 + 1,00,000 + 45,000 = 2,25,000.",
+          "Headroom = 2,50,000 − 2,25,000 = USD 25,000.",
+          "Studies abroad, gifts and portfolio investment are all within the single LRS ceiling."
+        ],
+        "formula_used": "Headroom = Ceiling − FY remittances under LRS",
+        "trap": "LRS is per financial year, not calendar year."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.5 and s.6; LRS (ceiling given in stem)"
+        }
+      ],
+      "options": [
+        {
+          "text": "USD 70,000",
+          "is_correct": false,
+          "error": "gift treated as outside LRS",
+          "label": "A"
+        },
+        {
+          "text": "Nil — the ceiling is already exceeded",
+          "is_correct": false,
+          "error": "Feb 2026 remittance (FY 2025-26) wrongly counted",
+          "label": "B"
+        },
+        {
+          "text": "USD 25,000",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "USD 1,05,000",
+          "is_correct": false,
+          "error": "education remittance treated as outside LRS",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTO-010",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-authorised-persons-and-rbi-directions-s-10-to-s-12-6a68c4c3",
+      "microtopic_name": "FEMA — authorised persons and RBI directions (s.10 to s.12)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "An authorised dealer bank contravenes a direction issued by the RBI under s.11 of FEMA, and the contravention continues for 12 further days after it began. The maximum penalty the RBI can impose on the bank is:",
+      "explanation": {
+        "steps": [
+          "s.11(3): RBI may impose a penalty up to ₹10,000 and, for a continuing contravention, an additional penalty up to ₹2,000 for every day the contravention continues.",
+          "Maximum = 10,000 + 2,000 × 12 = 34,000."
+        ],
+        "formula_used": "Max = ₹10,000 + ₹2,000 × continuing days",
+        "trap": "s.11 (authorised person vs RBI direction) ≠ s.13 (general penalty)."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.11(3)"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹2,60,000",
+          "is_correct": false,
+          "error": "s.13 non-quantifiable penalty rates applied",
+          "label": "A"
+        },
+        {
+          "text": "₹70,000",
+          "is_correct": false,
+          "error": "s.13 daily rate of ₹5,000 used",
+          "label": "B"
+        },
+        {
+          "text": "₹34,000",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹10,000",
+          "is_correct": false,
+          "error": "continuing-contravention penalty ignored",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTO-011",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-penalties-enforcement-and-compounding-s-13-to-s-15-5d4c30c2",
+      "microtopic_name": "FEMA — penalties, enforcement and compounding (s.13 to s.15)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "In a contravention of FEMA the sum involved is quantifiable at ₹48,00,000. The maximum penalty under s.13(1) is:",
+      "explanation": {
+        "steps": [
+          "s.13(1): penalty up to thrice the sum involved where the amount is quantifiable, or up to ₹2 lakh where not quantifiable.",
+          "Maximum = 3 × 48,00,000 = 1,44,00,000."
+        ],
+        "formula_used": "Max penalty = 3 × sum involved (quantifiable)",
+        "trap": "₹2 lakh applies only when the sum cannot be quantified."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.13(1)"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹96,00,000",
+          "is_correct": false,
+          "error": "twice the sum involved",
+          "label": "A"
+        },
+        {
+          "text": "₹2,00,000",
+          "is_correct": false,
+          "error": "₹2 lakh cap for non-quantifiable sums applied",
+          "label": "B"
+        },
+        {
+          "text": "₹1,92,00,000",
+          "is_correct": false,
+          "error": "sum involved added to thrice the sum",
+          "label": "C"
+        },
+        {
+          "text": "₹1,44,00,000",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTO-012",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-penalties-enforcement-and-compounding-s-13-to-s-15-5d4c30c2",
+      "microtopic_name": "FEMA — penalties, enforcement and compounding (s.13 to s.15)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Sagar Textiles Pvt Ltd applies on 1 Mar 2026 to compound a contravention of FEMA. Under s.15, the compounding authority is required to compound it on or before (date = application date + statutory period):",
+      "explanation": {
+        "steps": [
+          "s.15(1): any contravention may, on an application, be compounded within 180 days from the date of receipt of the application by the Directorate of Enforcement or RBI officers as empowered.",
+          "1 Mar 2026 + 180 days = 28 Aug 2026."
+        ],
+        "formula_used": "Compounding deadline = application date + 180 days",
+        "trap": "One year is the adjudication endeavour, not compounding."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.15"
+        }
+      ],
+      "options": [
+        {
+          "text": "30 May 2026",
+          "is_correct": false,
+          "error": "90-day penalty-payment period of s.14 applied",
+          "label": "A"
+        },
+        {
+          "text": "15 Apr 2026",
+          "is_correct": false,
+          "error": "45-day appeal period applied",
+          "label": "B"
+        },
+        {
+          "text": "1 Mar 2027",
+          "is_correct": false,
+          "error": "one-year adjudication period of s.16(6) applied",
+          "label": "C"
+        },
+        {
+          "text": "28 Aug 2026",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTO-013",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-adjudication-and-appeals-f3c94c7a",
+      "microtopic_name": "FEMA — adjudication and appeals",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "An Additional Director of Enforcement, acting as adjudicating authority, imposes a penalty on Meru Gems Ltd. The company receives a copy of the order on 10 Jun 2026. Its appeal (without seeking condonation) must be filed:",
+      "explanation": {
+        "steps": [
+          "s.17: Special Director (Appeals) hears appeals only against orders of Assistant or Deputy Directors.",
+          "Orders of other adjudicating authorities go to the Appellate Tribunal under s.19.",
+          "s.19(2): within 45 days from receipt of the order → 10 Jun 2026 + 45 = 25 Jul 2026."
+        ],
+        "formula_used": "Other AA orders → Appellate Tribunal, 45 days",
+        "trap": "Forum depends on the rank of the adjudicating officer."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.17, s.19"
+        }
+      ],
+      "options": [
+        {
+          "text": "Before the Special Director (Appeals) by 25 Jul 2026",
+          "is_correct": false,
+          "error": "s.17 forum is only for Assistant/Deputy Director orders",
+          "label": "A"
+        },
+        {
+          "text": "Before the Appellate Tribunal by 25 Jul 2026",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "Before the High Court by 9 Aug 2026",
+          "is_correct": false,
+          "error": "Tribunal stage skipped",
+          "label": "C"
+        },
+        {
+          "text": "Before the Appellate Tribunal by 9 Aug 2026",
+          "is_correct": false,
+          "error": "60-day High Court period used",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-014",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-residential-status-under-s-2-v-a6cc6289",
+      "microtopic_name": "FEMA — residential status under s.2(v)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Mr. Sameer Khan, an Indian citizen who normally works abroad, visited India on a holiday basis in three spells during FY 2025-26 (both arrival and departure days counted):\n\n| Spell | From | To | Days |\n|---|---|---|---:|\n| 1 | 1 Apr 2025 | 30 Jun 2025 | 91 |\n| 2 | 1 Oct 2025 | 30 Nov 2025 | 61 |\n| 3 | 1 Feb 2026 | 2 Mar 2026 | 30 |\n\nOver the previous four years he spent more than 365 days in India. His status under FEMA for FY 2026-27 is:",
+      "explanation": {
+        "steps": [
+          "Days in FY 2025-26 = 91 + 61 + 30 = 182.",
+          "s.2(v)(i) requires MORE THAN 182 days in the preceding FY; 182 fails.",
+          "FEMA has no 60-day/365-day alternative (that is an Income-tax Act concept)."
+        ],
+        "formula_used": "Resident only if days in preceding FY > 182",
+        "trap": "Exactly 182 is the classic boundary trap."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.2(v)(i)"
+        }
+      ],
+      "options": [
+        {
+          "text": "Resident — 60 days in the year plus 365 days in four years suffices",
+          "is_correct": false,
+          "error": "income-tax alternative test imported",
+          "label": "A"
+        },
+        {
+          "text": "Resident — 182 days meets the 182-day threshold",
+          "is_correct": false,
+          "error": "'more than 182' read as '182 or more'",
+          "label": "B"
+        },
+        {
+          "text": "Not resident — 182 days is not more than 182 days",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Undetermined until FY 2026-27 ends, as the current FY is tested",
+          "is_correct": false,
+          "error": "current-year test assumed",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTO-015",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-current-and-capital-account-transactions-s-5-s-6-and-lrs-cea4e175",
+      "microtopic_name": "FEMA — current and capital account transactions (s.5, s.6) and LRS",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements under FEMA:\n\n1. A person resident in India may continue to hold a house in London that he acquired while he was resident outside India.\n2. A person resident outside India may hold immovable property in India inherited from a person resident in India.\n3. Current account transactions need prior permission unless exempted, whereas capital account transactions are free unless restricted.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "s.6(4): a resident may hold, own, transfer or invest in foreign currency, foreign security or immovable property outside India acquired when he was resident outside India, or inherited from a non-resident — statement 1 true.",
+          "s.6(5): a non-resident may hold property in India acquired when resident in India or inherited from a resident — statement 2 true.",
+          "s.5 makes current account dealings free subject to reasonable restrictions by the Central Government; capital account dealings are allowed only as specified under s.6 — statement 3 is reversed."
+        ],
+        "formula_used": "Current: free unless restricted; Capital: permitted only as specified",
+        "trap": "The s.6(4)/(5) grandfathering is status-based, not approval-based."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.5, s.6(4), s.6(5)"
+        }
+      ],
+      "options": [
+        {
+          "text": "1 and 2 only",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "1 and 3 only",
+          "is_correct": false,
+          "error": "s.6(5) inheritance protection overlooked; s.5/s.6 scheme reversed",
+          "label": "B"
+        },
+        {
+          "text": "2 and 3 only",
+          "is_correct": false,
+          "error": "s.6(4) protection for assets acquired while non-resident overlooked",
+          "label": "C"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "s.5/s.6 scheme reversed",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-016",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-penalties-enforcement-and-compounding-s-13-to-s-15-5d4c30c2",
+      "microtopic_name": "FEMA — penalties, enforcement and compounding (s.13 to s.15)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A resident firm fails to file a mandatory FEMA report; the sum involved is not quantifiable. The default continues for a total of 40 days (including the first day). The maximum penalty under s.13(1) is:",
+      "explanation": {
+        "steps": [
+          "s.13(1): up to ₹2 lakh where the amount is not quantifiable.",
+          "Continuing contravention: further penalty up to ₹5,000 for every day AFTER THE FIRST DAY.",
+          "Max = 2,00,000 + 5,000 × (40 − 1) = 3,95,000."
+        ],
+        "formula_used": "Max = ₹2,00,000 + ₹5,000 × (days − 1)",
+        "trap": "The daily add-on starts after the first day."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.13(1)"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹88,000",
+          "is_correct": false,
+          "error": "s.11 authorised-person rates applied",
+          "label": "A"
+        },
+        {
+          "text": "₹4,00,000",
+          "is_correct": false,
+          "error": "first day also counted for the daily penalty",
+          "label": "B"
+        },
+        {
+          "text": "₹2,00,000",
+          "is_correct": false,
+          "error": "continuing penalty ignored",
+          "label": "C"
+        },
+        {
+          "text": "₹3,95,000",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTO-017",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-penalties-enforcement-and-compounding-s-13-to-s-15-5d4c30c2",
+      "microtopic_name": "FEMA — penalties, enforcement and compounding (s.13 to s.15)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Penalties imposed under s.13 of FEMA remain unpaid. Notice of demand was served on each person on the same day.\n\n| Person | Penalty demanded | Days since notice served |\n|---|---:|---:|\n| 1. Mr. Ajay | ₹1.5 crore | 100 |\n| 2. Ms. Bela | ₹60 lakh | 60 |\n| 3. Mr. Chirag | ₹60 lakh | 120 |\n\nWhich of the following are correct under s.14?\n\n1. Mr. Ajay is liable to civil imprisonment, with detention up to three years.\n2. Ms. Bela is liable to civil imprisonment, with detention up to six months.\n3. Mr. Chirag is liable to civil imprisonment, with detention up to six months.",
+      "explanation": {
+        "steps": [
+          "s.14: civil imprisonment arises only if the penalty is not paid within 90 days of service of the notice.",
+          "Detention: three years where the demand exceeds ₹1 crore; six months in other cases.",
+          "Ajay (₹1.5 crore, 100 days) → 3 years; Bela (60 days) → not yet liable; Chirag (₹60 lakh, 120 days) → 6 months."
+        ],
+        "formula_used": "s.14: unpaid > 90 days → detention 3 yrs (> ₹1 crore) / 6 months (others)",
+        "trap": "Liability is triggered by the 90-day default, not by the order itself."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.14"
+        }
+      ],
+      "options": [
+        {
+          "text": "1 only",
+          "is_correct": false,
+          "error": "six-month tier for demands up to ₹1 crore overlooked",
+          "label": "A"
+        },
+        {
+          "text": "3 only",
+          "is_correct": false,
+          "error": "₹1 crore threshold misread as barring detention for larger demands",
+          "label": "B"
+        },
+        {
+          "text": "1 and 3 only",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "90-day payment window of s.14 ignored for Ms. Bela",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTO-018",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-adjudication-and-appeals-f3c94c7a",
+      "microtopic_name": "FEMA — adjudication and appeals",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "match",
+      "stimulus_group": null,
+      "stem": "Match the order under FEMA (Column A) with the forum to which the first appeal lies (Column B):\n\n| Column A — order passed by | Column B — appeal forum |\n|---|---|\n| P. Deputy Director of Enforcement as adjudicating authority | 1. High Court |\n| Q. Joint Director of Enforcement as adjudicating authority | 2. Special Director (Appeals) |\n| R. Special Director (Appeals) | 3. Appellate Tribunal |\n| S. Appellate Tribunal (question of law) | 4. Appellate Tribunal |",
+      "explanation": {
+        "steps": [
+          "s.17: orders of Assistant/Deputy Directors → Special Director (Appeals).",
+          "s.19: orders of other adjudicating authorities and of the Special Director (Appeals) → Appellate Tribunal.",
+          "s.35: Appellate Tribunal orders → High Court on questions of law."
+        ],
+        "formula_used": "AD/DD → SD(A) → AT → HC; higher AA → AT → HC",
+        "trap": "Rank of the adjudicating officer decides the first forum."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.17, s.19, s.35"
+        }
+      ],
+      "options": [
+        {
+          "text": "P-2, Q-2, R-3, S-1",
+          "is_correct": false,
+          "error": "all Enforcement orders sent to Special Director (Appeals)",
+          "label": "A"
+        },
+        {
+          "text": "P-2, Q-3, R-4, S-1",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "P-2, Q-3, R-1, S-4",
+          "is_correct": false,
+          "error": "Special Director's orders sent straight to High Court",
+          "label": "C"
+        },
+        {
+          "text": "P-3, Q-2, R-4, S-1",
+          "is_correct": false,
+          "error": "Special Director forum assigned to the wrong rank",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-019",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-civil-character-and-contrast-with-fera-05cf5ce6",
+      "microtopic_name": "FEMA — civil character and contrast with FERA",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements contrasting FEMA, 1999 with FERA, 1973:\n\n1. FEMA's preamble speaks of facilitating external trade and payments, whereas FERA aimed at conserving foreign exchange resources.\n2. FERA raised a presumption of culpable mental state against the accused; FEMA contains no such presumption.\n3. FEMA barred courts from taking cognizance of offences under the repealed FERA after two years from FEMA's commencement.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "Preamble: FEMA — facilitate external trade and payments and orderly development of the forex market; FERA — conservation of forex.",
+          "FERA s.59 presumed culpable mental state; FEMA contraventions are civil with no such presumption.",
+          "FEMA s.49(3): no cognizance of FERA offences after two years from 1 June 2000."
+        ],
+        "formula_used": "FERA: criminal, conservation; FEMA: civil, facilitation",
+        "trap": "All three are standard contrast points."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, Preamble, s.49(3); FERA 1973, s.59"
+        }
+      ],
+      "options": [
+        {
+          "text": "1 and 2 only",
+          "is_correct": false,
+          "error": "two-year sunset for FERA cognizance (s.49(3)) overlooked",
+          "label": "A"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "2 and 3 only",
+          "is_correct": false,
+          "error": "preamble contrast overlooked",
+          "label": "C"
+        },
+        {
+          "text": "1 and 3 only",
+          "is_correct": false,
+          "error": "FERA s.59 presumption overlooked",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-020",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-authorised-persons-and-rbi-directions-s-10-to-s-12-6a68c4c3",
+      "microtopic_name": "FEMA — authorised persons and RBI directions (s.10 to s.12)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "assertion-reason",
+      "stimulus_group": null,
+      "stem": "**Assertion (A):** The RBI may revoke an authorised person's authorisation in the public interest without first giving it an opportunity to make a representation.\n\n**Reason (R):** Under s.10(3) of FEMA, the requirement of a reasonable opportunity of making a representation applies only to revocation on the ground of failure to comply with conditions or contravention of the Act.",
+      "explanation": {
+        "steps": [
+          "s.10(3)(a): revocation in the public interest; s.10(3)(b): failure to comply with conditions or contravention.",
+          "Proviso: no revocation on a ground in clause (b) without reasonable opportunity of representation.",
+          "Hence public-interest revocation (clause (a)) needs no prior representation — R explains A."
+        ],
+        "formula_used": "s.10(3) proviso attaches to clause (b) only",
+        "trap": "Hearing requirement is ground-specific."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.10(3)"
+        }
+      ],
+      "options": [
+        {
+          "text": "A is true, but R is false",
+          "is_correct": false,
+          "error": "proviso wrongly read as covering all grounds",
+          "label": "A"
+        },
+        {
+          "text": "Both A and R are true, but R is not the correct explanation of A",
+          "is_correct": false,
+          "error": "link between proviso and assertion missed",
+          "label": "B"
+        },
+        {
+          "text": "Both A and R are true, and R is the correct explanation of A",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "A is false, but R is true",
+          "is_correct": false,
+          "error": "public-interest revocation wrongly assumed to need a hearing",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTO-021",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-residential-status-under-s-2-v-a6cc6289",
+      "microtopic_name": "FEMA — residential status under s.2(v)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "ACTO-CASE-FEMA",
+      "stem": "**Case — Kaveri Tradelinks Pvt Ltd and Mr. Rohan Mehra (fictional)**\n\nKaveri Tradelinks Pvt Ltd, a company incorporated in India, exported goods invoiced at USD 5,00,000. Only USD 1,80,000 was realised; the balance USD 3,20,000 was not realised or repatriated within the permitted period, and no extension was obtained. Take the reference rate as ₹84 per USD. A complaint was filed and a Deputy Director of Enforcement was appointed adjudicating authority.\n\nMr. Rohan Mehra, Kaveri's export head, lived in India throughout FY 2025-26. On 5 Jun 2026 he left India to take up employment with a Singapore firm. He owns a flat in Pune that he bought in 2019.\n\nOn 1 Jul 2026, Mr. Rohan Mehra is:",
+      "explanation": {
+        "steps": [
+          "s.2(v)(i)(A)(a): a person who has gone out of India for or on taking up employment outside India is not a person resident in India, whatever his day count in the preceding FY.",
+          "From 5 Jun 2026 Rohan is a person resident outside India."
+        ],
+        "formula_used": "Employment abroad → excluded from 'resident'",
+        "trap": "Purpose trumps the 182-day count."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.2(v)(i)(A)"
+        }
+      ],
+      "options": [
+        {
+          "text": "A person resident in India for FY 2026-27, having stayed over 182 days in FY 2025-26",
+          "is_correct": false,
+          "error": "day count applied without the employment exclusion",
+          "label": "A"
+        },
+        {
+          "text": "A person resident outside India only from 1 Apr 2027",
+          "is_correct": false,
+          "error": "status wrongly fixed for the whole FY",
+          "label": "B"
+        },
+        {
+          "text": "A person resident in India until he completes 182 days in Singapore",
+          "is_correct": false,
+          "error": "non-residence wrongly made to need 182 days abroad",
+          "label": "C"
+        },
+        {
+          "text": "A person resident outside India, having gone abroad for employment",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTO-022",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-penalties-enforcement-and-compounding-s-13-to-s-15-5d4c30c2",
+      "microtopic_name": "FEMA — penalties, enforcement and compounding (s.13 to s.15)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "ACTO-CASE-FEMA",
+      "stem": "**Case — Kaveri Tradelinks Pvt Ltd and Mr. Rohan Mehra (fictional)**\n\nKaveri Tradelinks Pvt Ltd, a company incorporated in India, exported goods invoiced at USD 5,00,000. Only USD 1,80,000 was realised; the balance USD 3,20,000 was not realised or repatriated within the permitted period, and no extension was obtained. Take the reference rate as ₹84 per USD. A complaint was filed and a Deputy Director of Enforcement was appointed adjudicating authority.\n\nMr. Rohan Mehra, Kaveri's export head, lived in India throughout FY 2025-26. On 5 Jun 2026 he left India to take up employment with a Singapore firm. He owns a flat in Pune that he bought in 2019.\n\nThe maximum penalty that can be imposed on Kaveri under s.13(1) is:",
+      "explanation": {
+        "steps": [
+          "Sum involved = unrealised USD 3,20,000 × ₹84 = 2,68,80,000.",
+          "s.13(1): up to thrice the sum involved = 3 × 2,68,80,000 = 8,06,40,000."
+        ],
+        "formula_used": "Max = 3 × unrealised export value in ₹",
+        "trap": "Only the unrealised amount is the 'sum involved'."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.8, s.13(1)"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹8,06,40,000",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹12,60,00,000",
+          "is_correct": false,
+          "error": "thrice the full invoice value, including the realised part",
+          "label": "B"
+        },
+        {
+          "text": "₹2,00,000",
+          "is_correct": false,
+          "error": "₹2 lakh non-quantifiable cap applied",
+          "label": "C"
+        },
+        {
+          "text": "₹10,75,20,000",
+          "is_correct": false,
+          "error": "sum involved added to thrice the sum",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-023",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-adjudication-and-appeals-f3c94c7a",
+      "microtopic_name": "FEMA — adjudication and appeals",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "ACTO-CASE-FEMA",
+      "stem": "**Case — Kaveri Tradelinks Pvt Ltd and Mr. Rohan Mehra (fictional)**\n\nKaveri Tradelinks Pvt Ltd, a company incorporated in India, exported goods invoiced at USD 5,00,000. Only USD 1,80,000 was realised; the balance USD 3,20,000 was not realised or repatriated within the permitted period, and no extension was obtained. Take the reference rate as ₹84 per USD. A complaint was filed and a Deputy Director of Enforcement was appointed adjudicating authority.\n\nMr. Rohan Mehra, Kaveri's export head, lived in India throughout FY 2025-26. On 5 Jun 2026 he left India to take up employment with a Singapore firm. He owns a flat in Pune that he bought in 2019.\n\nThe Deputy Director imposes a penalty and Kaveri receives the order on 14 Jul 2026. Its first appeal (without seeking condonation) lies:",
+      "explanation": {
+        "steps": [
+          "s.17: orders of an Assistant or Deputy Director of Enforcement are appealable to the Special Director (Appeals).",
+          "s.17(2): within 45 days of receipt → 14 Jul 2026 + 45 = 28 Aug 2026."
+        ],
+        "formula_used": "Deputy Director order → SD(A) within 45 days",
+        "trap": "Only orders of higher-ranked AAs go straight to the Tribunal."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.17"
+        }
+      ],
+      "options": [
+        {
+          "text": "To the Appellate Tribunal, by 28 Aug 2026",
+          "is_correct": false,
+          "error": "s.17 forum for Deputy Director orders skipped",
+          "label": "A"
+        },
+        {
+          "text": "To the High Court, by 12 Sep 2026",
+          "is_correct": false,
+          "error": "first-appeal stages skipped",
+          "label": "B"
+        },
+        {
+          "text": "To the Special Director (Appeals), by 28 Aug 2026",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "To the Special Director (Appeals), by 12 Sep 2026",
+          "is_correct": false,
+          "error": "60-day period used",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTO-024",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-penalties-enforcement-and-compounding-s-13-to-s-15-5d4c30c2",
+      "microtopic_name": "FEMA — penalties, enforcement and compounding (s.13 to s.15)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "ACTO-CASE-FEMA",
+      "stem": "**Case — Kaveri Tradelinks Pvt Ltd and Mr. Rohan Mehra (fictional)**\n\nKaveri Tradelinks Pvt Ltd, a company incorporated in India, exported goods invoiced at USD 5,00,000. Only USD 1,80,000 was realised; the balance USD 3,20,000 was not realised or repatriated within the permitted period, and no extension was obtained. Take the reference rate as ₹84 per USD. A complaint was filed and a Deputy Director of Enforcement was appointed adjudicating authority.\n\nMr. Rohan Mehra, Kaveri's export head, lived in India throughout FY 2025-26. On 5 Jun 2026 he left India to take up employment with a Singapore firm. He owns a flat in Pune that he bought in 2019.\n\nBefore adjudication, Kaveri considers compounding. Consider:\n\n1. The contravention may be compounded by officers of the Directorate of Enforcement or of the RBI empowered for the purpose.\n2. Once compounded, no proceeding or further proceeding shall be initiated or continued for that contravention.\n3. Compounding is available only after the adjudicating authority has passed its order.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "s.15(1): contraventions may be compounded by the Director of Enforcement / officers of the Directorate and RBI officers as empowered by the Central Government.",
+          "s.15(2): once compounded, no proceeding or further proceeding shall be initiated or continued.",
+          "Compounding can be sought before adjudication — statement 3 false."
+        ],
+        "formula_used": "Compounding: ED/RBI, within 180 days, bars further proceedings",
+        "trap": "Compounding is an alternative to adjudication."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.15"
+        }
+      ],
+      "options": [
+        {
+          "text": "1 and 2 only",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "compounding wrongly limited to post-adjudication",
+          "label": "B"
+        },
+        {
+          "text": "1 and 3 only",
+          "is_correct": false,
+          "error": "bar on further proceedings overlooked",
+          "label": "C"
+        },
+        {
+          "text": "2 and 3 only",
+          "is_correct": false,
+          "error": "compounding authorities overlooked; stage misstated",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-025",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-fema-current-and-capital-account-transactions-s-5-s-6-and-lrs-cea4e175",
+      "microtopic_name": "FEMA — current and capital account transactions (s.5, s.6) and LRS",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "ACTO-CASE-FEMA",
+      "stem": "**Case — Kaveri Tradelinks Pvt Ltd and Mr. Rohan Mehra (fictional)**\n\nKaveri Tradelinks Pvt Ltd, a company incorporated in India, exported goods invoiced at USD 5,00,000. Only USD 1,80,000 was realised; the balance USD 3,20,000 was not realised or repatriated within the permitted period, and no extension was obtained. Take the reference rate as ₹84 per USD. A complaint was filed and a Deputy Director of Enforcement was appointed adjudicating authority.\n\nMr. Rohan Mehra, Kaveri's export head, lived in India throughout FY 2025-26. On 5 Jun 2026 he left India to take up employment with a Singapore firm. He owns a flat in Pune that he bought in 2019.\n\nNow a non-resident, Rohan wishes to keep the Pune flat. Under FEMA:",
+      "explanation": {
+        "steps": [
+          "s.6(5): a person resident outside India may hold, own, transfer or invest in immovable property situated in India if it was acquired, held or owned when he was resident in India, or inherited from a person resident in India.",
+          "Rohan bought the flat in 2019 while resident → he may continue to hold it."
+        ],
+        "formula_used": "s.6(5): acquired while resident / inherited from resident → may hold",
+        "trap": "Both limbs of s.6(5) protect him."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Foreign Exchange Management Act, 1999, s.6(5)"
+        }
+      ],
+      "options": [
+        {
+          "text": "He must sell it within one year of becoming a non-resident",
+          "is_correct": false,
+          "error": "fictitious disposal timeline",
+          "label": "A"
+        },
+        {
+          "text": "He may hold it only if it had been inherited",
+          "is_correct": false,
+          "error": "only the inheritance limb of s.6(5) recalled",
+          "label": "B"
+        },
+        {
+          "text": "He may keep it, as he acquired it while resident",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "He may hold it only with prior RBI permission",
+          "is_correct": false,
+          "error": "s.6(5) grandfathering overlooked",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTO-026",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-anti-competitive-agreements-s-3-6365e41c",
+      "microtopic_name": "Competition Act — anti-competitive agreements (s.3)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under s.3(3) of the Competition Act, a horizontal agreement between competitors that directly fixes sale prices is:",
+      "explanation": {
+        "steps": [
+          "s.3(3): agreements between enterprises engaged in identical or similar trade that fix prices, limit output, share markets or rig bids shall be presumed to have an AAEC.",
+          "Vertical agreements under s.3(4) are assessed under the rule of reason on s.19(3) factors."
+        ],
+        "formula_used": "Horizontal (s.3(3)) → presumption; vertical (s.3(4)) → rule of reason",
+        "trap": "No market-share safe harbour exists for s.3(3) cartels."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.3(3)"
+        }
+      ],
+      "options": [
+        {
+          "text": "Presumed to have an appreciable adverse effect on competition",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Exempt if the parties' combined market share is below 25%",
+          "is_correct": false,
+          "error": "foreign de minimis concept imported",
+          "label": "B"
+        },
+        {
+          "text": "Examined on the s.19(3) factors with no presumption",
+          "is_correct": false,
+          "error": "rule-of-reason treatment of vertical agreements applied",
+          "label": "C"
+        },
+        {
+          "text": "Void only if one of the parties is found dominant",
+          "is_correct": false,
+          "error": "s.4 dominance requirement imported into s.3",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-027",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-cci-composition-and-inquiry-process-a6de3bbc",
+      "microtopic_name": "Competition Act — CCI composition and inquiry process",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under s.8 of the Competition Act (as amended in 2007), the Competition Commission of India consists of a Chairperson and:",
+      "explanation": {
+        "steps": [
+          "s.8(1) as amended by the Competition (Amendment) Act, 2007: Chairperson and not less than 2 and not more than 6 other Members.",
+          "The original 2002 text allowed up to 10 other Members."
+        ],
+        "formula_used": "CCI = Chairperson + 2 to 6 Members",
+        "trap": "Distractor uses the pre-2007 ceiling of ten."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.8(1) (2007 amendment)"
+        }
+      ],
+      "options": [
+        {
+          "text": "Not less than two and not more than six other Members",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Not less than two and not more than ten other Members",
+          "is_correct": false,
+          "error": "original 2002 text before the 2007 amendment",
+          "label": "B"
+        },
+        {
+          "text": "Not less than four and not more than ten other Members",
+          "is_correct": false,
+          "error": "invented range mixing old ceiling",
+          "label": "C"
+        },
+        {
+          "text": "Exactly six other Members",
+          "is_correct": false,
+          "error": "range misread as fixed strength",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-028",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-settlement-commitment-and-appeals-60379d10",
+      "microtopic_name": "Competition Act — settlement, commitment and appeals",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "An enterprise aggrieved by a penalty order of the CCI under s.27 files its appeal before:",
+      "explanation": {
+        "steps": [
+          "The Finance Act, 2017 merged COMPAT into NCLAT; s.53A now designates NCLAT as Appellate Tribunal.",
+          "Further appeal from NCLAT lies to the Supreme Court (s.53T)."
+        ],
+        "formula_used": "CCI → NCLAT → Supreme Court",
+        "trap": "COMPAT no longer exists."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.53A, s.53B"
+        }
+      ],
+      "options": [
+        {
+          "text": "The Competition Appellate Tribunal (COMPAT) at Delhi",
+          "is_correct": false,
+          "error": "COMPAT abolished by Finance Act 2017",
+          "label": "A"
+        },
+        {
+          "text": "The National Company Law Appellate Tribunal (NCLAT)",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "The High Court having territorial jurisdiction",
+          "is_correct": false,
+          "error": "writ route confused with statutory appeal",
+          "label": "C"
+        },
+        {
+          "text": "The Securities Appellate Tribunal (SAT) at Mumbai",
+          "is_correct": false,
+          "error": "securities-market tribunal confused",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-029",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-abuse-of-dominant-position-s-4-d2e98375",
+      "microtopic_name": "Competition Act — abuse of dominant position (s.4)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under s.4 of the Competition Act, holding a dominant position in a relevant market:",
+      "explanation": {
+        "steps": [
+          "s.4(1): no enterprise or group shall abuse its dominant position.",
+          "Dominance is assessed on s.19(4) factors — not a single market-share number — and is not unlawful per se."
+        ],
+        "formula_used": "s.4: abuse, not dominance, is prohibited",
+        "trap": "The Act uses no numerical dominance threshold."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.4, s.19(4)"
+        }
+      ],
+      "options": [
+        {
+          "text": "Is not prohibited by itself; only its abuse is prohibited",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Is prohibited once market share exceeds 50%",
+          "is_correct": false,
+          "error": "fixed market-share test assumed",
+          "label": "B"
+        },
+        {
+          "text": "Requires prior approval of the CCI to be maintained",
+          "is_correct": false,
+          "error": "combination pre-approval concept confused",
+          "label": "C"
+        },
+        {
+          "text": "Is prohibited if the enterprise is a government company",
+          "is_correct": false,
+          "error": "public-sector status misread as a violation",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-030",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-penalties-and-lesser-penalty-s-27-s-46-be28b1f6",
+      "microtopic_name": "Competition Act — penalties and lesser penalty (s.27, s.46)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Suryodaya Pharma Ltd is found to have abused its dominant position (s.4). Its turnover:\n\n| Financial year | Turnover (₹ crore) |\n|---|---:|\n| FY 2022-23 | 1,840 |\n| FY 2023-24 | 2,150 |\n| FY 2024-25 | 2,410 |\n\nThe order is passed in FY 2025-26. The maximum penalty under s.27(b) is:",
+      "explanation": {
+        "steps": [
+          "Average turnover of the three preceding FYs = (1,840 + 2,150 + 2,410) ÷ 3 = 2,133.33.",
+          "Maximum penalty = 10% × 2,133.33 = ₹213.33 crore."
+        ],
+        "formula_used": "Max penalty = 10% × average turnover of 3 preceding FYs",
+        "trap": "Average, not aggregate or latest year."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.27(b)"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹241.00 crore",
+          "is_correct": false,
+          "error": "10% of the latest year's turnover only",
+          "label": "A"
+        },
+        {
+          "text": "₹228.00 crore",
+          "is_correct": false,
+          "error": "average of only two preceding years",
+          "label": "B"
+        },
+        {
+          "text": "₹213.33 crore",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹640.00 crore",
+          "is_correct": false,
+          "error": "10% of aggregate, not average, turnover",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTO-031",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-anti-competitive-agreements-s-3-6365e41c",
+      "microtopic_name": "Competition Act — anti-competitive agreements (s.3)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Which one of the following agreements is presumed to cause an appreciable adverse effect on competition under s.3(3)?",
+      "explanation": {
+        "steps": [
+          "s.3(3)(d): agreements that directly or indirectly result in bid rigging or collusive bidding are presumed to have AAEC.",
+          "RPM, exclusive distribution and tie-ins are s.3(4) vertical agreements judged on the rule of reason."
+        ],
+        "formula_used": "Competitors + bid rigging → s.3(3) presumption",
+        "trap": "Vertical restraints have no presumption."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.3(3)(d), s.3(4)"
+        }
+      ],
+      "options": [
+        {
+          "text": "A manufacturer fixing the minimum resale price for its dealers",
+          "is_correct": false,
+          "error": "resale price maintenance is vertical (s.3(4))",
+          "label": "A"
+        },
+        {
+          "text": "Three road contractors agreeing who will quote lowest in a tender",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "A printer maker requiring buyers to purchase its cartridges",
+          "is_correct": false,
+          "error": "tie-in arrangement is vertical (s.3(4))",
+          "label": "C"
+        },
+        {
+          "text": "A supplier appointing one exclusive distributor for a state",
+          "is_correct": false,
+          "error": "exclusive distribution is vertical (s.3(4))",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-032",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-combinations-and-merger-control-s-5-s-6-d04b44db",
+      "microtopic_name": "Competition Act — combinations and merger control (s.5, s.6)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "GlobalSoft Inc. agrees to acquire StartX Technologies Pvt Ltd for ₹2,400 crore. StartX's assets and turnover in India are within the de minimis (small-target) exemption, and the parties do not cross the asset/turnover thresholds in s.5(a)–(c). StartX has substantial business operations in India. Under the Act as amended in 2023:",
+      "explanation": {
+        "steps": [
+          "2023 amendment inserted s.5(d): a transaction whose value exceeds ₹2,000 crore is a combination where the target has substantial business operations in India.",
+          "The small-target exemption does not take such a deal outside s.5(d).",
+          "s.6(2): notice must be given before the combination comes into effect."
+        ],
+        "formula_used": "Deal value > ₹2,000 crore + SBO in India → notifiable",
+        "trap": "Deal-value test catches low-asset, high-price targets."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.5(d), s.6(2) (2023 amendment)"
+        }
+      ],
+      "options": [
+        {
+          "text": "No notice needed, since the de minimis target exemption applies",
+          "is_correct": false,
+          "error": "small-target exemption applied to deal-value route",
+          "label": "A"
+        },
+        {
+          "text": "Notice is required: deal value exceeds ₹2,000 crore with Indian operations",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "No notice needed, since the asset/turnover thresholds are not met",
+          "is_correct": false,
+          "error": "deal-value threshold s.5(d) overlooked",
+          "label": "C"
+        },
+        {
+          "text": "Notice is due within 30 days after the deal is completed",
+          "is_correct": false,
+          "error": "post-completion filing; also old 30-day window",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-033",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-combinations-and-merger-control-s-5-s-6-d04b44db",
+      "microtopic_name": "Competition Act — combinations and merger control (s.5, s.6)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Notice of a combination is filed with the CCI on 2 Feb 2026 (board approval was on 18 Jan 2026). The CCI neither passes an order nor stops the clock. The standstill period and the date it runs to (notice date + period) are:",
+      "explanation": {
+        "steps": [
+          "s.6(2A) as amended in 2023: no combination shall come into effect until 150 days have passed from the date of notice or the CCI passes an order, whichever is earlier (earlier 210 days).",
+          "s.31(11): if no order is passed within that period, the combination is deemed approved.",
+          "2 Feb 2026 + 150 days = 2 Jul 2026."
+        ],
+        "formula_used": "Standstill = 150 days from notice (2023)",
+        "trap": "Trigger is the notice date, not board approval."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.6(2A), s.31(11) (2023 amendment)"
+        }
+      ],
+      "options": [
+        {
+          "text": "210 days — up to 31 Aug 2026",
+          "is_correct": false,
+          "error": "pre-2023 outer limit of 210 days",
+          "label": "A"
+        },
+        {
+          "text": "150 days — up to 2 Jul 2026",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "30 days — up to 4 Mar 2026",
+          "is_correct": false,
+          "error": "prima facie opinion window treated as standstill",
+          "label": "C"
+        },
+        {
+          "text": "150 days — up to 17 Jun 2026",
+          "is_correct": false,
+          "error": "period counted from board approval",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-034",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-abuse-of-dominant-position-s-4-d2e98375",
+      "microtopic_name": "Competition Act — abuse of dominant position (s.4)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "A dominant cement producer engages in each practice below. Which one is NOT an abuse under s.4(2)?",
+      "explanation": {
+        "steps": [
+          "s.4(2)(a): unfair or discriminatory condition or price, including predatory price, is abuse.",
+          "Proviso: a discriminatory condition or price adopted to meet the competition is not covered.",
+          "Denial of market access (c) and supplementary obligations (d) are abuses."
+        ],
+        "formula_used": "Meeting-competition proviso to s.4(2)(a)",
+        "trap": "Price discrimination to meet competition is protected."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.4(2)"
+        }
+      ],
+      "options": [
+        {
+          "text": "Refusing a rival access to its rail siding and depot",
+          "is_correct": false,
+          "error": "denial of market access — s.4(2)(c)",
+          "label": "A"
+        },
+        {
+          "text": "Making purchase of cement conditional on buying its RMC",
+          "is_correct": false,
+          "error": "supplementary obligation — s.4(2)(d)",
+          "label": "B"
+        },
+        {
+          "text": "Matching a rival's lower price in one region to meet competition",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Selling below cost to drive a new entrant out of the region",
+          "is_correct": false,
+          "error": "predatory pricing — s.4(2)(a)(ii)",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTO-035",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-settlement-commitment-and-appeals-60379d10",
+      "microtopic_name": "Competition Act — settlement, commitment and appeals",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under the 2023 amendments, a commitment under s.48B can be offered:",
+      "explanation": {
+        "steps": [
+          "s.48B: commitment for alleged s.3(4) or s.4 contraventions, after the s.26(1) order and before the DG's investigation report.",
+          "s.48A: settlement — after the DG report and before the final order.",
+          "Neither route is available for s.3(3) horizontal agreements (cartels)."
+        ],
+        "formula_used": "Commitment: s.26(1) → [commit] → DG report → [settle] → final order",
+        "trap": "Settlement follows, commitment precedes, the DG report."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.48A, s.48B (2023 amendment)"
+        }
+      ],
+      "options": [
+        {
+          "text": "In a s.4 abuse case, after the s.26(1) order but before the DG report",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "In any case, after the final s.27 order, while the appeal is pending",
+          "is_correct": false,
+          "error": "post-order stage; no such route",
+          "label": "B"
+        },
+        {
+          "text": "In a s.3(3) cartel case, after the s.26(1) order but before the DG report",
+          "is_correct": false,
+          "error": "cartels excluded from commitment",
+          "label": "C"
+        },
+        {
+          "text": "In a s.4 abuse case, after the DG report is received",
+          "is_correct": false,
+          "error": "settlement stage (s.48A) confused with commitment",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-036",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-settlement-commitment-and-appeals-60379d10",
+      "microtopic_name": "Competition Act — settlement, commitment and appeals",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "The CCI imposes a penalty of ₹84 crore on Vayu Airlines Ltd under s.27. To have its appeal entertained by the NCLAT, Vayu must first deposit:",
+      "explanation": {
+        "steps": [
+          "s.53B(1) proviso (2023 amendment): no appeal against a penalty order shall be entertained unless the appellant deposits 25% of the penalty imposed.",
+          "25% × 84 = ₹21.00 crore."
+        ],
+        "formula_used": "Pre-deposit = 25% of penalty",
+        "trap": "The 2023 amendment introduced a mandatory 25% pre-deposit."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.53B (2023 amendment)"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹8.40 crore",
+          "is_correct": false,
+          "error": "10% pre-deposit borrowed from other statutes",
+          "label": "A"
+        },
+        {
+          "text": "₹42.00 crore",
+          "is_correct": false,
+          "error": "50% pre-deposit assumed",
+          "label": "B"
+        },
+        {
+          "text": "₹21.00 crore",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹84.00 crore",
+          "is_correct": false,
+          "error": "full penalty assumed payable before appeal",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTO-037",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-penalties-and-lesser-penalty-s-27-s-46-be28b1f6",
+      "microtopic_name": "Competition Act — penalties and lesser penalty (s.27, s.46)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Kosi Tyres Ltd participated in a cartel for three years:\n\n| Year of cartel | Profit (₹ crore) | Turnover (₹ crore) |\n|---|---:|---:|\n| FY 2022-23 | 60 | 1,200 |\n| FY 2023-24 | 75 | 1,350 |\n| FY 2024-25 | 90 | 1,500 |\n\nThe maximum penalty on Kosi under the cartel proviso to s.27(b) is:",
+      "explanation": {
+        "steps": [
+          "Limb 1: 3 × profit for each year = 3 × (60 + 75 + 90) = 675.",
+          "Limb 2: 10% of turnover for each year = 10% × 4,050 = 405.",
+          "Whichever is higher → ₹675.00 crore."
+        ],
+        "formula_used": "Cartel: max(3 × profit, 10% × turnover) for each year of continuance",
+        "trap": "The cartel proviso counts each year of continuance, not an average."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.27(b) proviso"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹270.00 crore",
+          "is_correct": false,
+          "error": "three times only the latest year's profit",
+          "label": "A"
+        },
+        {
+          "text": "₹135.00 crore",
+          "is_correct": false,
+          "error": "non-cartel 10% of average turnover applied",
+          "label": "B"
+        },
+        {
+          "text": "₹405.00 crore",
+          "is_correct": false,
+          "error": "lower of the two limbs chosen",
+          "label": "C"
+        },
+        {
+          "text": "₹675.00 crore",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTO-038",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-penalties-and-lesser-penalty-s-27-s-46-be28b1f6",
+      "microtopic_name": "Competition Act — penalties and lesser penalty (s.27, s.46)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Three members of a cartel apply under s.46 in the order Alpha, Beta, Gamma, each making full, true and vital disclosure. Assume the lesser-penalty regulations allow reductions of up to 100%, up to 50% and up to 30% for the first, second and third applicants respectively. Penalties before reduction (₹ crore):\n\n| Applicant | Penalty before reduction |\n|---|---:|\n| Alpha | 300 |\n| Beta | 240 |\n| Gamma | 180 |\n\nThe minimum aggregate penalty payable by the three, if each gets its full band, is:",
+      "explanation": {
+        "steps": [
+          "Alpha (first): 300 × (1 − 100%) = 0.",
+          "Beta (second): 240 × (1 − 50%) = 120.",
+          "Gamma (third): 180 × (1 − 30%) = 126.",
+          "Total = ₹246.00 crore."
+        ],
+        "formula_used": "Payable = Penalty × (1 − band by priority)",
+        "trap": "Bands depend on order of application, not penalty size."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.46; lesser-penalty bands given in stem"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹246.00 crore",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹396.00 crore",
+          "is_correct": false,
+          "error": "first applicant given only 50%",
+          "label": "B"
+        },
+        {
+          "text": "₹258.00 crore",
+          "is_correct": false,
+          "error": "second and third bands swapped",
+          "label": "C"
+        },
+        {
+          "text": "₹210.00 crore",
+          "is_correct": false,
+          "error": "Gamma given the 50% band as well",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-039",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-anti-competitive-agreements-s-3-6365e41c",
+      "microtopic_name": "Competition Act — anti-competitive agreements (s.3)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements on s.3 of the Competition Act:\n\n1. After the 2023 amendment, an enterprise not engaged in identical or similar trade that participates in furthering a horizontal agreement is presumed to be a party to it.\n2. A joint venture agreement that increases efficiency in production or supply is outside the s.3(3) presumption.\n3. Vertical agreements under s.3(4), such as exclusive supply, are presumed to cause an appreciable adverse effect.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "2023 amendment to s.3(3): a non-competitor participating in furtherance of a horizontal agreement is presumed to be part of it (hub-and-spoke).",
+          "Proviso to s.3(3): efficiency-enhancing joint ventures are excluded from the presumption.",
+          "s.3(4) vertical agreements are contraventions only if they cause AAEC — no presumption."
+        ],
+        "formula_used": "s.3(3) presumption (+hub-and-spoke, −efficiency JV); s.3(4) rule of reason",
+        "trap": "Only horizontal agreements carry the presumption."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.3(3), s.3(4) (2023 amendment)"
+        }
+      ],
+      "options": [
+        {
+          "text": "2 and 3 only",
+          "is_correct": false,
+          "error": "2023 hub-and-spoke provision overlooked",
+          "label": "A"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "vertical agreements wrongly given the presumption",
+          "label": "B"
+        },
+        {
+          "text": "1 and 3 only",
+          "is_correct": false,
+          "error": "efficiency JV proviso overlooked",
+          "label": "C"
+        },
+        {
+          "text": "1 and 2 only",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTO-040",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-abuse-of-dominant-position-s-4-d2e98375",
+      "microtopic_name": "Competition Act — abuse of dominant position (s.4)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "match",
+      "stimulus_group": null,
+      "stem": "Match the statutory factor (Column A) with the provision under which the CCI considers it (Column B):\n\n| Column A — factor | Column B — provision |\n|---|---|\n| P. Dependence of consumers on the enterprise | 1. s.19(3) — appreciable adverse effect |\n| Q. Accrual of benefits to consumers | 2. s.19(4) — dominant position |\n| R. Transport costs and local specification requirements | 3. s.19(6) — relevant geographic market |\n| S. Physical characteristics or end-use of goods | 4. s.19(7) — relevant product market |",
+      "explanation": {
+        "steps": [
+          "s.19(4): dominance factors include market share, size and resources, dependence of consumers, entry barriers.",
+          "s.19(3): AAEC factors include barriers to entry, foreclosure, accrual of benefits to consumers.",
+          "s.19(6): geographic market — regulatory barriers, local specification, transport costs.",
+          "s.19(7): product market — physical characteristics, end-use, price, consumer preferences."
+        ],
+        "formula_used": "s.19(3) AAEC · s.19(4) dominance · s.19(6) geographic · s.19(7) product",
+        "trap": "Consumer dependence signals dominance; consumer benefit is a pro-competitive AAEC factor."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.19(3), (4), (6), (7)"
+        }
+      ],
+      "options": [
+        {
+          "text": "P-1, Q-2, R-3, S-4",
+          "is_correct": false,
+          "error": "AAEC and dominance factors swapped",
+          "label": "A"
+        },
+        {
+          "text": "P-2, Q-4, R-3, S-1",
+          "is_correct": false,
+          "error": "consumer benefit read as product-market factor",
+          "label": "B"
+        },
+        {
+          "text": "P-2, Q-1, R-3, S-4",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "P-2, Q-1, R-4, S-3",
+          "is_correct": false,
+          "error": "geographic and product market factors swapped",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTO-041",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-combinations-and-merger-control-s-5-s-6-d04b44db",
+      "microtopic_name": "Competition Act — combinations and merger control (s.5, s.6)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Assume: (i) the parties' combined assets in India exceed ₹2,500 crore is the relevant s.5 asset test; (ii) the small-target exemption applies where the target has Indian assets not above ₹450 crore OR Indian turnover not above ₹1,250 crore. Three proposed acquisitions (₹ crore):\n\n| Deal | Combined Indian assets | Target Indian assets | Target Indian turnover | Deal value | Target has substantial Indian operations |\n|---|---:|---:|---:|---:|---|\n| D1 | 3,000 | 400 | 1,000 | 900 | No |\n| D2 | 2,800 | 600 | 1,400 | 1,100 | No |\n| D3 | 1,500 | 300 | 800 | 2,300 | Yes |\n\nWhich deals must be notified to the CCI?",
+      "explanation": {
+        "steps": [
+          "D1: combined assets 3,000 > 2,500, but target assets 400 ≤ 450 → small-target exemption; deal value 900 → not notifiable.",
+          "D2: combined assets 2,800 > 2,500; target 600 > 450 and 1,400 > 1,250 → no exemption → notifiable.",
+          "D3: below asset test, but deal value 2,300 > 2,000 with substantial Indian operations → notifiable under s.5(d)."
+        ],
+        "formula_used": "Asset/turnover test − small-target exemption; OR deal value > ₹2,000 crore + SBO",
+        "trap": "The exemption is satisfied if EITHER target limb is within the limit."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.5, s.5(d) (2023 amendment); asset and de minimis limits given as data"
+        }
+      ],
+      "options": [
+        {
+          "text": "D1, D2 and D3",
+          "is_correct": false,
+          "error": "small-target exemption ignored for D1",
+          "label": "A"
+        },
+        {
+          "text": "D2 only",
+          "is_correct": false,
+          "error": "deal-value threshold (s.5(d)) ignored for D3",
+          "label": "B"
+        },
+        {
+          "text": "D2 and D3 only",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "D1 and D3 only",
+          "is_correct": false,
+          "error": "exemption applied to the wrong target",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTO-042",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-settlement-commitment-and-appeals-60379d10",
+      "microtopic_name": "Competition Act — settlement, commitment and appeals",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "assertion-reason",
+      "stimulus_group": null,
+      "stem": "**Assertion (A):** A party to a bid-rigging cartel cannot apply for settlement under s.48A.\n\n**Reason (R):** Settlement and commitment are available only for alleged contraventions of s.3(4) and s.4; cartel members may instead seek lesser penalty under s.46.",
+      "explanation": {
+        "steps": [
+          "s.48A/s.48B (2023) apply to proceedings under s.3(4) (vertical) and s.4 (abuse) only.",
+          "Bid rigging is an s.3(3) horizontal agreement → excluded; the leniency route is s.46.",
+          "R directly explains A."
+        ],
+        "formula_used": "Settlement/commitment: s.3(4), s.4 only; cartels → s.46",
+        "trap": "Cartels get leniency, not settlement."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.46, s.48A, s.48B (2023 amendment)"
+        }
+      ],
+      "options": [
+        {
+          "text": "Both A and R are true, but R is not the correct explanation of A",
+          "is_correct": false,
+          "error": "link between scope of s.48A and the assertion missed",
+          "label": "A"
+        },
+        {
+          "text": "A is true, but R is false",
+          "is_correct": false,
+          "error": "s.46 route or scope limit denied",
+          "label": "B"
+        },
+        {
+          "text": "A is false, but R is true",
+          "is_correct": false,
+          "error": "cartels wrongly assumed eligible for settlement",
+          "label": "C"
+        },
+        {
+          "text": "Both A and R are true, and R is the correct explanation of A",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTO-043",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-cci-composition-and-inquiry-process-a6de3bbc",
+      "microtopic_name": "Competition Act — CCI composition and inquiry process",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Arrange the stages of a CCI inquiry into an alleged s.4 contravention in the correct order:\n\nP. Director General investigates and submits a report\nQ. CCI forms a prima facie opinion and directs investigation under s.26(1)\nR. Information is filed under s.19(1)\nS. CCI passes a final order under s.27 after hearing the parties",
+      "explanation": {
+        "steps": [
+          "s.19(1): inquiry begins on information, reference or suo motu.",
+          "s.26(1): if a prima facie case exists, CCI directs the DG to investigate.",
+          "DG report → objections/hearing → final order under s.27."
+        ],
+        "formula_used": "Information → s.26(1) → DG report → s.27 order",
+        "trap": "The DG acts only on the CCI's s.26(1) direction."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.19, s.26, s.27"
+        }
+      ],
+      "options": [
+        {
+          "text": "Q → R → P → S",
+          "is_correct": false,
+          "error": "prima facie opinion placed before information",
+          "label": "A"
+        },
+        {
+          "text": "R → Q → P → S",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "R → Q → S → P",
+          "is_correct": false,
+          "error": "final order placed before the DG report",
+          "label": "C"
+        },
+        {
+          "text": "R → P → Q → S",
+          "is_correct": false,
+          "error": "DG investigation placed before the prima facie order",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-044",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-anti-competitive-agreements-s-3-6365e41c",
+      "microtopic_name": "Competition Act — anti-competitive agreements (s.3)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "ACTO-CASE-COMP",
+      "stem": "**Case — Western RMC Suppliers Forum (fictional)**\n\nAravali RMC Ltd, Bhima Infra Ltd and Chambal Concrete Ltd supply ready-mix concrete. Through meetings of their trade association, the Western RMC Suppliers Forum, they decided in advance who would quote lowest in municipal tenders from FY 2022-23 to FY 2024-25 (three years). Aravali approached the CCI first under s.46 with full disclosure; Bhima approached second. Chambal did not apply. Chambal's figures (₹ crore):\n\n| Year | Profit | Turnover |\n|---|---:|---:|\n| FY 2022-23 | 20 | 900 |\n| FY 2023-24 | 22 | 1,000 |\n| FY 2024-25 | 25 | 1,100 |\n\nAssume the lesser-penalty regulations allow up to 100% reduction for the first applicant and up to 50% for the second.\n\nThe arrangement is best characterised as:",
+      "explanation": {
+        "steps": [
+          "s.3(3) covers agreements and decisions of associations of enterprises engaged in identical or similar trade, including cartels.",
+          "s.3(3)(d): bid rigging/collusive bidding is presumed to have AAEC."
+        ],
+        "formula_used": "Competitors + association + bid rigging → s.3(3)(d)",
+        "trap": "Association decisions are expressly covered."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.3(3)(d)"
+        }
+      ],
+      "options": [
+        {
+          "text": "Outside s.3, as decisions of an association are not agreements",
+          "is_correct": false,
+          "error": "association practices wrongly excluded",
+          "label": "A"
+        },
+        {
+          "text": "A horizontal s.3(3) agreement, presumed to cause AAEC",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "A vertical s.3(4) agreement judged on the rule of reason",
+          "is_correct": false,
+          "error": "competitors' pact treated as vertical",
+          "label": "C"
+        },
+        {
+          "text": "An abuse of collective dominance under s.4 only",
+          "is_correct": false,
+          "error": "s.4 applied instead of s.3(3)",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-045",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-penalties-and-lesser-penalty-s-27-s-46-be28b1f6",
+      "microtopic_name": "Competition Act — penalties and lesser penalty (s.27, s.46)",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "ACTO-CASE-COMP",
+      "stem": "**Case — Western RMC Suppliers Forum (fictional)**\n\nAravali RMC Ltd, Bhima Infra Ltd and Chambal Concrete Ltd supply ready-mix concrete. Through meetings of their trade association, the Western RMC Suppliers Forum, they decided in advance who would quote lowest in municipal tenders from FY 2022-23 to FY 2024-25 (three years). Aravali approached the CCI first under s.46 with full disclosure; Bhima approached second. Chambal did not apply. Chambal's figures (₹ crore):\n\n| Year | Profit | Turnover |\n|---|---:|---:|\n| FY 2022-23 | 20 | 900 |\n| FY 2023-24 | 22 | 1,000 |\n| FY 2024-25 | 25 | 1,100 |\n\nAssume the lesser-penalty regulations allow up to 100% reduction for the first applicant and up to 50% for the second.\n\nThe maximum penalty that can be imposed on Chambal is:",
+      "explanation": {
+        "steps": [
+          "3 × profit for each year = 3 × 67 = 201.",
+          "10% of turnover for each year = 10% × 3,000 = 300.",
+          "Higher of the two = ₹300.00 crore."
+        ],
+        "formula_used": "Cartel: higher of 3 × profit or 10% × turnover, each year",
+        "trap": "Here the turnover limb is higher."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.27(b) proviso"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹300.00 crore",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹201.00 crore",
+          "is_correct": false,
+          "error": "lower of the two limbs chosen",
+          "label": "B"
+        },
+        {
+          "text": "₹110.00 crore",
+          "is_correct": false,
+          "error": "10% of only the latest year's turnover",
+          "label": "C"
+        },
+        {
+          "text": "₹100.00 crore",
+          "is_correct": false,
+          "error": "non-cartel 10% of average turnover applied",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-046",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-settlement-commitment-and-appeals-60379d10",
+      "microtopic_name": "Competition Act — settlement, commitment and appeals",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "ACTO-CASE-COMP",
+      "stem": "**Case — Western RMC Suppliers Forum (fictional)**\n\nAravali RMC Ltd, Bhima Infra Ltd and Chambal Concrete Ltd supply ready-mix concrete. Through meetings of their trade association, the Western RMC Suppliers Forum, they decided in advance who would quote lowest in municipal tenders from FY 2022-23 to FY 2024-25 (three years). Aravali approached the CCI first under s.46 with full disclosure; Bhima approached second. Chambal did not apply. Chambal's figures (₹ crore):\n\n| Year | Profit | Turnover |\n|---|---:|---:|\n| FY 2022-23 | 20 | 900 |\n| FY 2023-24 | 22 | 1,000 |\n| FY 2024-25 | 25 | 1,100 |\n\nAssume the lesser-penalty regulations allow up to 100% reduction for the first applicant and up to 50% for the second.\n\nThe CCI computes Bhima's penalty before reduction at ₹150 crore. Bhima also asks to settle under s.48A. The correct position is:",
+      "explanation": {
+        "steps": [
+          "Second applicant: up to 50% reduction → 150 × 50% = ₹75.00 crore.",
+          "s.48A settlement is confined to s.3(4) and s.4 proceedings; bid rigging falls under s.3(3)."
+        ],
+        "formula_used": "Payable = base × (1 − band); cartel → no settlement",
+        "trap": "Leniency is the only concession route for cartelists."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.46, s.48A"
+        }
+      ],
+      "options": [
+        {
+          "text": "Minimum payable ₹75.00 crore; settlement allowed after DG report",
+          "is_correct": false,
+          "error": "cartels wrongly made eligible for s.48A",
+          "label": "A"
+        },
+        {
+          "text": "Minimum payable ₹105.00 crore; settlement is not available",
+          "is_correct": false,
+          "error": "third-applicant 30% band applied",
+          "label": "B"
+        },
+        {
+          "text": "Minimum payable ₹0.00 crore; full immunity as it also disclosed",
+          "is_correct": false,
+          "error": "first-applicant band given to second applicant",
+          "label": "C"
+        },
+        {
+          "text": "Minimum payable ₹75.00 crore; settlement is not available",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTO-047",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-competition-act-settlement-commitment-and-appeals-60379d10",
+      "microtopic_name": "Competition Act — settlement, commitment and appeals",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "ACTO-CASE-COMP",
+      "stem": "**Case — Western RMC Suppliers Forum (fictional)**\n\nAravali RMC Ltd, Bhima Infra Ltd and Chambal Concrete Ltd supply ready-mix concrete. Through meetings of their trade association, the Western RMC Suppliers Forum, they decided in advance who would quote lowest in municipal tenders from FY 2022-23 to FY 2024-25 (three years). Aravali approached the CCI first under s.46 with full disclosure; Bhima approached second. Chambal did not apply. Chambal's figures (₹ crore):\n\n| Year | Profit | Turnover |\n|---|---:|---:|\n| FY 2022-23 | 20 | 900 |\n| FY 2023-24 | 22 | 1,000 |\n| FY 2024-25 | 25 | 1,100 |\n\nAssume the lesser-penalty regulations allow up to 100% reduction for the first applicant and up to 50% for the second.\n\nThe CCI imposes ₹300.00 crore on Chambal. Chambal's appeal lies:",
+      "explanation": {
+        "steps": [
+          "s.53B: appeal to NCLAT within 60 days of receipt of the CCI's order.",
+          "2023 proviso: 25% of penalty must be deposited → 25% × 300 = ₹75.00 crore.",
+          "Supreme Court appeal (s.53T) lies only against NCLAT's order."
+        ],
+        "formula_used": "NCLAT, 60 days, 25% pre-deposit",
+        "trap": "Supreme Court is the second appellate forum."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Competition Act, 2002, s.53B, s.53T (2023 amendment)"
+        }
+      ],
+      "options": [
+        {
+          "text": "To NCLAT within 30 days, after depositing ₹75.00 crore",
+          "is_correct": false,
+          "error": "wrong appeal period",
+          "label": "A"
+        },
+        {
+          "text": "To NCLAT within 60 days, after depositing ₹75.00 crore",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "To NCLAT within 60 days, after depositing ₹30.00 crore",
+          "is_correct": false,
+          "error": "10% pre-deposit assumed",
+          "label": "C"
+        },
+        {
+          "text": "To the Supreme Court within 60 days, after depositing ₹75.00 crore",
+          "is_correct": false,
+          "error": "NCLAT stage skipped",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-048",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-partners-designated-partners-and-mutual-rights-2fc4debb",
+      "microtopic_name": "LLP Act — partners, designated partners and mutual rights",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "For incorporation of a limited liability partnership, the LLP Act, 2008 requires:",
+      "explanation": {
+        "steps": [
+          "s.6(1): every LLP shall have at least two partners.",
+          "The Act prescribes no maximum."
+        ],
+        "formula_used": "Minimum 2 partners; no ceiling",
+        "trap": "The 50-person cap applies to partnership firms, not LLPs."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.6"
+        }
+      ],
+      "options": [
+        {
+          "text": "At least two partners, with a maximum of fifty",
+          "is_correct": false,
+          "error": "partnership-firm cap under Companies Act rules imported",
+          "label": "A"
+        },
+        {
+          "text": "At least one partner, as with a one person company",
+          "is_correct": false,
+          "error": "OPC concept imported",
+          "label": "B"
+        },
+        {
+          "text": "At least two partners, with no maximum limit",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "At least seven partners, with no maximum limit",
+          "is_correct": false,
+          "error": "public-company minimum imported",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTO-049",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-incorporation-legal-status-and-liability-4c17408f",
+      "microtopic_name": "LLP Act — incorporation, legal status and liability",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Which statement about the legal status of an LLP is correct?",
+      "explanation": {
+        "steps": [
+          "s.3: an LLP is a body corporate, a legal entity separate from its partners, with perpetual succession; change in partners does not affect its existence.",
+          "s.4: the Indian Partnership Act, 1932 does not apply to an LLP."
+        ],
+        "formula_used": "LLP = body corporate + separate entity + perpetual succession",
+        "trap": "It is neither a firm nor a company."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.3, s.4"
+        }
+      ],
+      "options": [
+        {
+          "text": "It is a body corporate, but a change in partners dissolves it",
+          "is_correct": false,
+          "error": "perpetual succession denied",
+          "label": "A"
+        },
+        {
+          "text": "It is a company limited by guarantee under the Companies Act, 2013",
+          "is_correct": false,
+          "error": "LLP confused with guarantee company",
+          "label": "B"
+        },
+        {
+          "text": "It is a body corporate with perpetual succession, outside the Partnership Act, 1932",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "It is a firm under the Partnership Act, 1932 with limited liability added",
+          "is_correct": false,
+          "error": "s.4 exclusion overlooked",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTO-050",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-winding-up-and-dissolution-81af7b12",
+      "microtopic_name": "LLP Act — winding up and dissolution",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under the LLP Act, an LLP may be wound up compulsorily by:",
+      "explanation": {
+        "steps": [
+          "s.63: winding up may be voluntary or by the Tribunal.",
+          "Tribunal = NCLT (s.2(1)(x) read with Companies Act, 2013)."
+        ],
+        "formula_used": "Compulsory winding up → NCLT",
+        "trap": "NCLAT hears appeals; High Courts no longer wind up LLPs."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.63, s.64"
+        }
+      ],
+      "options": [
+        {
+          "text": "The National Company Law Tribunal",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "The Registrar of Companies",
+          "is_correct": false,
+          "error": "Registrar's strike-off power confused with winding up",
+          "label": "B"
+        },
+        {
+          "text": "The High Court having jurisdiction",
+          "is_correct": false,
+          "error": "pre-NCLT forum",
+          "label": "C"
+        },
+        {
+          "text": "The National Company Law Appellate Tribunal",
+          "is_correct": false,
+          "error": "appellate forum confused with original forum",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-051",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-conversion-into-llp-9695455d",
+      "microtopic_name": "LLP Act — conversion into LLP",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Conversion of an unlisted public company into an LLP is governed by:",
+      "explanation": {
+        "steps": [
+          "s.55/Second Schedule: firm → LLP.",
+          "s.56/Third Schedule: private company → LLP.",
+          "s.57/Fourth Schedule: unlisted public company → LLP."
+        ],
+        "formula_used": "Firm 55/II · Pvt Co 56/III · Unlisted Public Co 57/IV",
+        "trap": "Listed companies cannot use s.57."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.55 to s.57"
+        }
+      ],
+      "options": [
+        {
+          "text": "Section 56 read with the Third Schedule",
+          "is_correct": false,
+          "error": "private company conversion route",
+          "label": "A"
+        },
+        {
+          "text": "Section 57 read with the Fourth Schedule",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "Section 57, which also covers listed companies",
+          "is_correct": false,
+          "error": "listed companies wrongly included",
+          "label": "C"
+        },
+        {
+          "text": "Section 55 read with the Second Schedule",
+          "is_correct": false,
+          "error": "partnership firm conversion route",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-052",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-partners-designated-partners-and-mutual-rights-2fc4debb",
+      "microtopic_name": "LLP Act — partners, designated partners and mutual rights",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Sunrise Advisory LLP has exactly two designated partners, both individuals. In FY 2025-26, Ms. Asha (an Indian citizen working mainly from Dubai) stayed in India for 130 days; Mr. Brian (a foreign national) stayed 90 days. Under s.7, as amended by the LLP (Amendment) Act, 2021, the resident designated partner requirement for FY 2025-26 is:",
+      "explanation": {
+        "steps": [
+          "s.7(1): at least two designated partners who are individuals, at least one of whom shall be resident in India.",
+          "Explanation (2021 amendment): 'resident in India' = stayed in India not less than 120 days during the financial year (earlier: 182 days during the immediately preceding one year).",
+          "Asha's 130 days ≥ 120 → requirement met."
+        ],
+        "formula_used": "≥1 designated partner resident: ≥120 days in the FY",
+        "trap": "The 182-day test is pre-amendment."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.7 Explanation (LLP (Amendment) Act 2021)"
+        }
+      ],
+      "options": [
+        {
+          "text": "Met — Asha stayed in India for at least 120 days in the FY",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Not met — both designated partners must be resident in India",
+          "is_correct": false,
+          "error": "requirement is at least one resident",
+          "label": "B"
+        },
+        {
+          "text": "Not met — a resident must stay 182 days in the preceding year",
+          "is_correct": false,
+          "error": "pre-2021 182-day test applied",
+          "label": "C"
+        },
+        {
+          "text": "Met — residency is irrelevant for designated partners",
+          "is_correct": false,
+          "error": "residency requirement denied",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-053",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-incorporation-legal-status-and-liability-4c17408f",
+      "microtopic_name": "LLP Act — incorporation, legal status and liability",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "In the course of Crest Engineering LLP's business, partner Dev negligently certifies a defective design, causing loss to a client. Partner Esha had no involvement. Under ss.27 and 28, the client can recover from:",
+      "explanation": {
+        "steps": [
+          "s.27(2): an LLP is liable if a partner is liable for a wrongful act or omission in the course of its business.",
+          "s.28(2): a partner is personally liable for his own wrongful act or omission, but not for another partner's."
+        ],
+        "formula_used": "LLP + wrongdoer liable; innocent partners protected",
+        "trap": "Liability protection is lost only for one's own wrong."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.27, s.28"
+        }
+      ],
+      "options": [
+        {
+          "text": "The LLP only; no partner is ever personally liable",
+          "is_correct": false,
+          "error": "partner's own wrongful act (s.28(2)) ignored",
+          "label": "A"
+        },
+        {
+          "text": "The LLP and Dev; Esha is not personally liable",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "The LLP, Dev and Esha jointly, as in a firm",
+          "is_correct": false,
+          "error": "unlimited joint liability of a firm imported",
+          "label": "C"
+        },
+        {
+          "text": "Dev only; the LLP is not liable for a partner's act",
+          "is_correct": false,
+          "error": "s.27(2) vicarious liability of the LLP ignored",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-054",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-small-llp-filings-and-decriminalisation-ea45d566",
+      "microtopic_name": "LLP Act — small LLP, filings and decriminalisation",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Nimbus Tech LLP files its annual return (Form 11) for FY 2025-26 on 15 Aug 2026. Assume an additional fee of ₹100 per day of delay. The additional fee payable is:",
+      "explanation": {
+        "steps": [
+          "s.35: annual return within 60 days of the close of the FY → due 30 May 2026.",
+          "Delay = 30 May 2026 to 15 Aug 2026 = 77 days; fee = 77 × 100 = 7,700."
+        ],
+        "formula_used": "Annual return due = FY end + 60 days (30 May)",
+        "trap": "Form 11 (60 days) ≠ Form 8 (30 Oct)."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.35; additional fee rate given in stem"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹4,600",
+          "is_correct": false,
+          "error": "due date taken as 30 June",
+          "label": "A"
+        },
+        {
+          "text": "₹7,800",
+          "is_correct": false,
+          "error": "due date itself counted as a day of delay",
+          "label": "B"
+        },
+        {
+          "text": "₹13,700",
+          "is_correct": false,
+          "error": "delay counted from the end of the FY",
+          "label": "C"
+        },
+        {
+          "text": "₹7,700",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTO-055",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-conversion-into-llp-9695455d",
+      "microtopic_name": "LLP Act — conversion into LLP",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Rathi & Co., a registered firm of four partners, wants to convert into an LLP. At conversion, partner Om wishes to retire and an investor, Priya, wishes to join. Under s.55 and the Second Schedule:",
+      "explanation": {
+        "steps": [
+          "Second Schedule: a firm may convert if all its partners become the partners of the LLP and no one else.",
+          "Om's exit and Priya's entry must happen before or after conversion, not as part of it."
+        ],
+        "formula_used": "Conversion: same partners in, no one else",
+        "trap": "Partner changes break the identity condition."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.55, Second Schedule"
+        }
+      ],
+      "options": [
+        {
+          "text": "It can convert, as long as the LLP has at least two partners",
+          "is_correct": false,
+          "error": "minimum-partner rule mistaken for conversion condition",
+          "label": "A"
+        },
+        {
+          "text": "It cannot convert unless all its partners become partners",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "It can convert if the Registrar of Firms grants approval",
+          "is_correct": false,
+          "error": "fictitious approval route",
+          "label": "C"
+        },
+        {
+          "text": "It can convert if Om consents in writing to his exit",
+          "is_correct": false,
+          "error": "consent does not cure the condition",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-056",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-small-llp-filings-and-decriminalisation-ea45d566",
+      "microtopic_name": "LLP Act — small LLP, filings and decriminalisation",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Assume that the penalty payable by a small LLP (and its partners) is one-half of the penalty otherwise specified, subject to a maximum of ₹1,00,000 for the LLP and ₹50,000 for each partner. For a default by Tara Small LLP, the specified penalties work out to ₹1,50,000 on the LLP and ₹1,20,000 on each of its 3 partners. The total penalty payable is:",
+      "explanation": {
+        "steps": [
+          "LLP: half of 1,50,000 = 75,000 (below cap).",
+          "Each partner: half of 1,20,000 = 60,000 → capped at 50,000.",
+          "Total = 75,000 + 3 × 50,000 = 2,25,000."
+        ],
+        "formula_used": "Payable = Σ min(½ × specified, cap)",
+        "trap": "Caps apply per person."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, lesser-penalty provision for small LLPs (LLP (Amendment) Act 2021); rule given in stem"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹1,25,000",
+          "is_correct": false,
+          "error": "partner cap applied to all partners together",
+          "label": "A"
+        },
+        {
+          "text": "₹2,25,000",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹5,10,000",
+          "is_correct": false,
+          "error": "small-LLP concession ignored",
+          "label": "C"
+        },
+        {
+          "text": "₹2,55,000",
+          "is_correct": false,
+          "error": "per-person caps ignored",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-057",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-winding-up-and-dissolution-81af7b12",
+      "microtopic_name": "LLP Act — winding up and dissolution",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Nayan Advisory LLP has not filed its statement of account and solvency or annual return for FY 2021-22, 2022-23 and 2023-24. For four months in 2025 it had only one partner. Its partners have now resolved that the LLP be wound up by the Tribunal. Which ground under s.64 is available now?",
+      "explanation": {
+        "steps": [
+          "s.64(a): the LLP decides that it be wound up by the Tribunal — available.",
+          "s.64(b): partners below two for more than six months — not met (4 months).",
+          "s.64(e): default in filing for any five consecutive FYs — not met (3 years)."
+        ],
+        "formula_used": "s.64: own decision / <2 partners >6 months / 5-year filing default / just & equitable…",
+        "trap": "Check the duration limbs before choosing a ground."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.64"
+        }
+      ],
+      "options": [
+        {
+          "text": "The LLP's own decision to be wound up by the Tribunal",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Default in filing returns for consecutive financial years",
+          "is_correct": false,
+          "error": "three years < five consecutive FYs required",
+          "label": "B"
+        },
+        {
+          "text": "Partners reduced below two",
+          "is_correct": false,
+          "error": "four months < more than six months required",
+          "label": "C"
+        },
+        {
+          "text": "None, as only creditors may petition",
+          "is_correct": false,
+          "error": "LLP's own decision ground overlooked",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-058",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-partners-designated-partners-and-mutual-rights-2fc4debb",
+      "microtopic_name": "LLP Act — partners, designated partners and mutual rights",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Sheetal and Rakesh were the only partners of Vista Interiors LLP. Rakesh died on 1 Jan 2026. Sheetal, knowing she was the sole partner, carried on the business throughout 2026 without admitting anyone. LLP obligations incurred in 2026:\n\n| Date | Obligation |\n|---|---:|\n| 15 Mar 2026 | ₹4,00,000 |\n| 20 Jun 2026 | ₹6,00,000 |\n| 10 Jul 2026 | ₹5,00,000 |\n| 2 Nov 2026 | ₹7,00,000 |\n\nTreat the six-month period as ending on 30 Jun 2026. Sheetal's personal liability under s.6(2) is for:",
+      "explanation": {
+        "steps": [
+          "s.6(2): if an LLP carries on business with fewer than two partners for more than six months, the sole partner who knows it is personally liable for obligations incurred during the period after those six months.",
+          "Obligations after 30 Jun 2026: 5,00,000 + 7,00,000 = 12,00,000."
+        ],
+        "formula_used": "Personal liability = obligations after the 6-month grace",
+        "trap": "The first six months stay protected."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.6(2)"
+        }
+      ],
+      "options": [
+        {
+          "text": "Nil, since the LLP is a separate legal entity",
+          "is_correct": false,
+          "error": "s.6(2) exception ignored",
+          "label": "A"
+        },
+        {
+          "text": "₹22,00,000",
+          "is_correct": false,
+          "error": "all obligations since the partner's death",
+          "label": "B"
+        },
+        {
+          "text": "₹12,00,000",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹7,00,000",
+          "is_correct": false,
+          "error": "six months counted from the first obligation",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTO-059",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-small-llp-filings-and-decriminalisation-ea45d566",
+      "microtopic_name": "LLP Act — small LLP, filings and decriminalisation",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Assume the prescribed limits for a small LLP are contribution not exceeding ₹5 crore AND turnover (preceding FY) not exceeding ₹50 crore. Data (₹ crore):\n\n| LLP | Contribution | Turnover |\n|---|---:|---:|\n| E1 | 4 | 60 |\n| E2 | 3 | 45 |\n| E3 | 6 | 20 |\n| E4 | 5 | 50 |\n\nWhich are small LLPs?",
+      "explanation": {
+        "steps": [
+          "The definition (s.2(1)(ta), 2021) is conjunctive: both contribution and turnover limits must be met.",
+          "E1 fails turnover; E3 fails contribution; E4 equals both limits — 'not exceeding' includes equality."
+        ],
+        "formula_used": "Small LLP = contribution ≤ limit AND turnover ≤ limit",
+        "trap": "Equality qualifies; both tests must pass."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.2(1)(ta) (LLP (Amendment) Act 2021); limits given in stem"
+        }
+      ],
+      "options": [
+        {
+          "text": "E2 and E4 only",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "E1, E2 and E4 only",
+          "is_correct": false,
+          "error": "turnover limit ignored",
+          "label": "B"
+        },
+        {
+          "text": "E1, E2, E3 and E4",
+          "is_correct": false,
+          "error": "either limit treated as sufficient",
+          "label": "C"
+        },
+        {
+          "text": "E2 only",
+          "is_correct": false,
+          "error": "'not exceeding' read as 'less than'",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-060",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-small-llp-filings-and-decriminalisation-ea45d566",
+      "microtopic_name": "LLP Act — small LLP, filings and decriminalisation",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements on the LLP (Amendment) Act, 2021:\n\n1. Carrying on business with intent to defraud creditors remains a criminal offence under the Act.\n2. The amendment introduced the concept of a small LLP, eligible for lower penalties.\n3. An appeal against a penalty order of the adjudicating officer lies to the NCLT.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "Decriminalisation (2021) moved many defaults to penalties adjudged by an adjudicating officer (s.76A), but fraud under s.30 stays a criminal offence.",
+          "Small LLP concept (s.2(1)(ta)) was introduced with lesser penalties.",
+          "Appeal against the adjudicating officer's order lies to the Regional Director, not the NCLT."
+        ],
+        "formula_used": "2021: decriminalise procedural defaults; keep fraud criminal; AO → RD appeal",
+        "trap": "Adjudication appeals go to the Regional Director."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.30, s.76A, s.2(1)(ta) (LLP (Amendment) Act 2021)"
+        }
+      ],
+      "options": [
+        {
+          "text": "1 and 3 only",
+          "is_correct": false,
+          "error": "small LLP concept overlooked",
+          "label": "A"
+        },
+        {
+          "text": "1 and 2 only",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "appellate authority misidentified as NCLT",
+          "label": "C"
+        },
+        {
+          "text": "2 and 3 only",
+          "is_correct": false,
+          "error": "fraud wrongly assumed decriminalised",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-061",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-incorporation-legal-status-and-liability-4c17408f",
+      "microtopic_name": "LLP Act — incorporation, legal status and liability",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "assertion-reason",
+      "stimulus_group": null,
+      "stem": "**Assertion (A):** A supplier of Orbit LLP cannot sue Orbit's partners personally for an unpaid contractual debt of the LLP, absent fraud.\n\n**Reason (R):** Under s.27(3), an obligation of an LLP, whether arising in contract or otherwise, is solely the obligation of the LLP.",
+      "explanation": {
+        "steps": [
+          "s.27(3): obligations of the LLP are solely its obligations; s.27(4): liabilities are met out of its property.",
+          "s.28(1): a partner is not personally liable solely by reason of being a partner.",
+          "Exception: s.30 unlimited liability where business is carried on with intent to defraud."
+        ],
+        "formula_used": "s.27(3) + s.28(1): LLP alone owes its debts (fraud excepted)",
+        "trap": "Fraud (s.30) is the key exception."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.27(3), s.28, s.30"
+        }
+      ],
+      "options": [
+        {
+          "text": "A is false, but R is true",
+          "is_correct": false,
+          "error": "partners wrongly assumed liable as in a firm",
+          "label": "A"
+        },
+        {
+          "text": "Both A and R are true, and R is the correct explanation of A",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "A is true, but R is false",
+          "is_correct": false,
+          "error": "s.27(3) misread",
+          "label": "C"
+        },
+        {
+          "text": "Both A and R are true, but R is not the correct explanation of A",
+          "is_correct": false,
+          "error": "s.27(3) not linked to the assertion",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-062",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-conversion-into-llp-9695455d",
+      "microtopic_name": "LLP Act — conversion into LLP",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Three private companies want to convert into LLPs under s.56 and the Third Schedule:\n\n| Company | Charge on assets | Shareholders joining LLP |\n|---|---|---|\n| Alpha Pvt Ltd | Bank charge fully satisfied and closed | All five, no one else |\n| Beta Pvt Ltd | Working capital charge subsisting | All three, no one else |\n| Gamma Pvt Ltd | No charge ever created | Three of four; the fourth exits |\n\nWhich can convert?",
+      "explanation": {
+        "steps": [
+          "Third Schedule: conversion allowed only if there is no security interest subsisting or in force, and all shareholders become partners and no one else.",
+          "Beta fails the security-interest test; Gamma fails the identity test."
+        ],
+        "formula_used": "Pvt Co → LLP: no subsisting charge + identical membership",
+        "trap": "Both conditions are cumulative."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.56, Third Schedule"
+        }
+      ],
+      "options": [
+        {
+          "text": "Alpha and Beta only",
+          "is_correct": false,
+          "error": "subsisting security interest ignored",
+          "label": "A"
+        },
+        {
+          "text": "Alpha and Gamma only",
+          "is_correct": false,
+          "error": "all-shareholders condition ignored",
+          "label": "B"
+        },
+        {
+          "text": "Alpha only",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Alpha, Beta and Gamma",
+          "is_correct": false,
+          "error": "both conditions ignored",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTO-063",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-partners-designated-partners-and-mutual-rights-2fc4debb",
+      "microtopic_name": "LLP Act — partners, designated partners and mutual rights",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Kiran and Leela are partners of Monsoon Crafts LLP with no LLP agreement. Kiran contributed ₹30,00,000 and Leela ₹10,00,000. Leela managed the business and claims ₹2,00,000 as remuneration. Profit for the year before any remuneration is ₹12,00,000. Under the First Schedule, Kiran's share of profit is:",
+      "explanation": {
+        "steps": [
+          "s.23(4): where there is no LLP agreement, the First Schedule governs mutual rights.",
+          "First Schedule: partners share capital, profits and losses equally; no partner is entitled to remuneration.",
+          "Kiran's share = 12,00,000 ÷ 2 = 6,00,000."
+        ],
+        "formula_used": "No agreement → equal sharing, no remuneration",
+        "trap": "Contribution ratio is irrelevant under the default rules."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.23(4), First Schedule"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹6,00,000",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹9,00,000",
+          "is_correct": false,
+          "error": "profit shared in capital ratio",
+          "label": "B"
+        },
+        {
+          "text": "₹5,00,000",
+          "is_correct": false,
+          "error": "remuneration allowed before sharing",
+          "label": "C"
+        },
+        {
+          "text": "₹7,50,000",
+          "is_correct": false,
+          "error": "capital ratio and remuneration both applied",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTO-064",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-conversion-into-llp-9695455d",
+      "microtopic_name": "LLP Act — conversion into LLP",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "ACTO-CASE-LLP",
+      "stem": "**Case — Arohi Design LLP (fictional)**\n\nArohi Design Studio, a registered firm of three partners (Ira, Kabir and Meher), converted into Arohi Design LLP, registered on 1 Jul 2025. All three partners became partners of the LLP and no one else; Ira and Kabir are the designated partners. There is no clause in the LLP agreement on cessation. Ira lived in India throughout FY 2025-26. Kabir, posted to London, was in India only on these days (both ends counted):\n\n| Spell | From | To |\n|---|---|---|\n| 1 | 1 Apr 2025 | 10 May 2025 |\n| 2 | 20 Dec 2025 | 15 Jan 2026 |\n| 3 | 1 Mar 2026 | 28 Mar 2026 |\n\nAssume an additional fee of ₹100 per day of delay for late filings.\n\nConsider the following consequences of the conversion:\n\n1. All property and liabilities of the firm vested in the LLP, and the firm is deemed dissolved.\n2. For 12 months from registration, the LLP's official correspondence must state that it was converted from the firm, with the firm's name and registration number.\n3. Contracts made by the firm before conversion ended automatically on conversion.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "Second Schedule: on registration, the firm's undertaking, property, rights and liabilities vest in the LLP and the firm is deemed dissolved.",
+          "Every official correspondence for 12 months must disclose the conversion, firm name and registration number.",
+          "Contracts and proceedings of the firm continue by or against the LLP — they do not lapse."
+        ],
+        "formula_used": "Conversion = vesting + deemed dissolution + continuity + 12-month disclosure",
+        "trap": "Conversion transfers, it does not terminate, contracts."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.55, Second Schedule"
+        }
+      ],
+      "options": [
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "continuity of pending contracts overlooked",
+          "label": "A"
+        },
+        {
+          "text": "1 and 2 only",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "1 and 3 only",
+          "is_correct": false,
+          "error": "12-month correspondence disclosure overlooked",
+          "label": "C"
+        },
+        {
+          "text": "2 and 3 only",
+          "is_correct": false,
+          "error": "vesting and deemed dissolution overlooked",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTO-065",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-partners-designated-partners-and-mutual-rights-2fc4debb",
+      "microtopic_name": "LLP Act — partners, designated partners and mutual rights",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "ACTO-CASE-LLP",
+      "stem": "**Case — Arohi Design LLP (fictional)**\n\nArohi Design Studio, a registered firm of three partners (Ira, Kabir and Meher), converted into Arohi Design LLP, registered on 1 Jul 2025. All three partners became partners of the LLP and no one else; Ira and Kabir are the designated partners. There is no clause in the LLP agreement on cessation. Ira lived in India throughout FY 2025-26. Kabir, posted to London, was in India only on these days (both ends counted):\n\n| Spell | From | To |\n|---|---|---|\n| 1 | 1 Apr 2025 | 10 May 2025 |\n| 2 | 20 Dec 2025 | 15 Jan 2026 |\n| 3 | 1 Mar 2026 | 28 Mar 2026 |\n\nAssume an additional fee of ₹100 per day of delay for late filings.\n\nFor FY 2025-26, Arohi's compliance with the resident designated partner requirement is:",
+      "explanation": {
+        "steps": [
+          "Kabir's days = 40 + 27 + 28 = 95 (< 120, so not resident).",
+          "s.7(1) needs only one designated partner resident in India (≥120 days in the FY). Ira qualifies.",
+          "The LLP is compliant."
+        ],
+        "formula_used": "≥1 resident designated partner (≥120 days in FY)",
+        "trap": "Only one resident designated partner is needed."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.7 (LLP (Amendment) Act 2021)"
+        }
+      ],
+      "options": [
+        {
+          "text": "Non-compliant — Kabir's 95 days fall short of 120 days",
+          "is_correct": false,
+          "error": "requirement read as all designated partners",
+          "label": "A"
+        },
+        {
+          "text": "Non-compliant — Ira must also have 182 days in the preceding year",
+          "is_correct": false,
+          "error": "pre-2021 182-day test applied",
+          "label": "B"
+        },
+        {
+          "text": "Compliant — Kabir's 95 days exceed the 90-day minimum",
+          "is_correct": false,
+          "error": "fictitious 90-day test",
+          "label": "C"
+        },
+        {
+          "text": "Compliant — Ira is resident, so Kabir's 95 days do not matter",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTO-066",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-small-llp-filings-and-decriminalisation-ea45d566",
+      "microtopic_name": "LLP Act — small LLP, filings and decriminalisation",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "ACTO-CASE-LLP",
+      "stem": "**Case — Arohi Design LLP (fictional)**\n\nArohi Design Studio, a registered firm of three partners (Ira, Kabir and Meher), converted into Arohi Design LLP, registered on 1 Jul 2025. All three partners became partners of the LLP and no one else; Ira and Kabir are the designated partners. There is no clause in the LLP agreement on cessation. Ira lived in India throughout FY 2025-26. Kabir, posted to London, was in India only on these days (both ends counted):\n\n| Spell | From | To |\n|---|---|---|\n| 1 | 1 Apr 2025 | 10 May 2025 |\n| 2 | 20 Dec 2025 | 15 Jan 2026 |\n| 3 | 1 Mar 2026 | 28 Mar 2026 |\n\nAssume an additional fee of ₹100 per day of delay for late filings.\n\nArohi files its statement of account and solvency (Form 8) for FY 2025-26 on 5 Jan 2027. The additional fee is:",
+      "explanation": {
+        "steps": [
+          "Statement of account and solvency is due within 30 days from the end of six months of the FY → 30 Oct 2026.",
+          "Delay = 30 Oct 2026 to 5 Jan 2027 = 67 days → 67 × 100 = 6,700."
+        ],
+        "formula_used": "Form 8 due 30 Oct; fee = days late × rate",
+        "trap": "Six months is the preparation period; filing gets 30 more days."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.34; LLP Rules, 2009 r.24; fee rate given in stem"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹3,700",
+          "is_correct": false,
+          "error": "due date taken as eight months from FY end",
+          "label": "A"
+        },
+        {
+          "text": "₹22,000",
+          "is_correct": false,
+          "error": "annual return due date (30 May) applied",
+          "label": "B"
+        },
+        {
+          "text": "₹9,700",
+          "is_correct": false,
+          "error": "due date taken as six months from FY end",
+          "label": "C"
+        },
+        {
+          "text": "₹6,700",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTO-067",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-llp-act-partners-designated-partners-and-mutual-rights-2fc4debb",
+      "microtopic_name": "LLP Act — partners, designated partners and mutual rights",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "ACTO-CASE-LLP",
+      "stem": "**Case — Arohi Design LLP (fictional)**\n\nArohi Design Studio, a registered firm of three partners (Ira, Kabir and Meher), converted into Arohi Design LLP, registered on 1 Jul 2025. All three partners became partners of the LLP and no one else; Ira and Kabir are the designated partners. There is no clause in the LLP agreement on cessation. Ira lived in India throughout FY 2025-26. Kabir, posted to London, was in India only on these days (both ends counted):\n\n| Spell | From | To |\n|---|---|---|\n| 1 | 1 Apr 2025 | 10 May 2025 |\n| 2 | 20 Dec 2025 | 15 Jan 2026 |\n| 3 | 1 Mar 2026 | 28 Mar 2026 |\n\nAssume an additional fee of ₹100 per day of delay for late filings.\n\nMeher gives written notice of resignation to the other partners on 10 Jan 2027. Treat cessation as effective on expiry of the minimum notice period. The cessation date and the last date for the LLP to file the notice of change with the Registrar are:",
+      "explanation": {
+        "steps": [
+          "s.24(1): absent agreement, a partner ceases by giving not less than 30 days' notice → 10 Jan 2027 + 30 = 9 Feb 2027.",
+          "s.25(2): the LLP must file notice with the Registrar within 30 days of cessation → 11 Mar 2027."
+        ],
+        "formula_used": "Cessation = notice + 30 days; filing = cessation + 30 days",
+        "trap": "Two separate 30-day clocks run back to back."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Limited Liability Partnership Act, 2008, s.24, s.25"
+        }
+      ],
+      "options": [
+        {
+          "text": "10 Jan 2027 and 9 Feb 2027",
+          "is_correct": false,
+          "error": "cessation treated as immediate",
+          "label": "A"
+        },
+        {
+          "text": "9 Feb 2027 and 24 Feb 2027",
+          "is_correct": false,
+          "error": "15-day filing period assumed",
+          "label": "B"
+        },
+        {
+          "text": "9 Feb 2027 and 11 Mar 2027",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "9 Feb 2027 and 10 Apr 2027",
+          "is_correct": false,
+          "error": "60-day annual-return period used for filing",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    }
+  ]
+}

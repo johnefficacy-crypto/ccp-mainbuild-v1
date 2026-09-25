@@ -174,7 +174,7 @@ def add_all(B):
           "s.143(2): FY of filing + 3 months", "Processing (143(1)) and scrutiny notice (143(2)) have different limits.",
           verify_fact=True, ref="Income-tax Act, 1961 — s.143(2) proviso (applicable to AY 2025-26)")
 
-    B.add(mia, "L3", "Under the Income-tax Act, 1961, an assessment order under section 143(3) was passed on 15 December 2023. The assessee files a rectification application under section 154, which the Assessing Officer receives on 10 August 2026. The last date to rectify the order at all, and the date by which the AO must dispose of this application, are respectively:",
+    B.add(mia, "L3", "Under the Income-tax Act, 1961, an assessment order for AY 2022-23 under section 143(3) was passed on 15 December 2023. The assessee files a rectification application under section 154, which the Assessing Officer receives on 10 August 2026. The last date to rectify the order at all, and the date by which the AO must dispose of this application, are respectively:",
           "31 March 2028; 28 February 2027",
           [("15 December 2027; 28 February 2027", "4 years counted from the order date instead of end of its FY"),
            ("31 March 2028; 10 February 2027", "6 months counted from the date of receipt instead of end of that month"),
@@ -186,7 +186,7 @@ def add_all(B):
 
     # =============================== Income tax — penalties & PAN ===============================
     mip = M("income-tax-penalties-and-pan")
-    B.add(mip, "L1", "Under the Income-tax Act, 1961, the penalty under section 272B for failure to comply with the PAN provisions of section 139A is:",
+    B.add(mip, "L1", "Under the Income-tax Act, 1961 (law as applicable for AY 2025-26), the penalty under section 272B for failure to comply with the PAN provisions of section 139A is:",
           "₹10,000", [("₹5,000", "confuses with the late-filing fee under s.234F"), ("₹1,000", "confuses with the PAN–Aadhaar late-linking fee under s.234H"),
                       ("₹1,00,000", "no such amount for PAN default")],
           ["s.272B(1): failure to comply with s.139A → penalty of ₹10,000.", "Also applies to quoting/intimating a false PAN (s.272B(2))."],
@@ -194,7 +194,7 @@ def add_all(B):
 
     ret, asd, rate = 12_00_000, 20_00_000, 0.30 * 1.04
     under = asd - ret; taxu = under * rate; pen = 2.0 * taxu
-    B.add(mip, "L3", f"Under the Income-tax Act, 1961, an assessee (all income taxable at the maximum marginal rate of 30% plus 4% cess, no surcharge) returned {R(ret)}. The assessed income is {R(asd)}; the entire difference arose from fabricated purchase invoices. The penalty under section 270A is:",
+    B.add(mip, "L3", f"Under the Income-tax Act, 1961 (AY 2025-26), an assessee (all income taxable at the maximum marginal rate of 30% plus 4% cess, no surcharge) returned {R(ret)}. The assessed income is {R(asd)}; the entire difference arose from fabricated purchase invoices. The penalty under section 270A is:",
           R(pen),
           [(R(0.5 * taxu), "50% rate for under-reporting used; fabrication is misreporting"),
            (R(2.0 * under), "200% applied to under-reported income instead of tax thereon"),

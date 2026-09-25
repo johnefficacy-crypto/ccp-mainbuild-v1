@@ -1,0 +1,4311 @@
+{
+  "batch": "REG-CORPUS-ACT-BANK",
+  "subject": "financial-sector-acts",
+  "count": 70,
+  "levels": {
+    "L1": 15,
+    "L3": 21,
+    "L2": 20,
+    "L4": 14
+  },
+  "questions": [
+    {
+      "id": "ACTB-001",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-constitution-central-board-and-governance-99cd7abf",
+      "microtopic_name": "RBI Act — Constitution, Central Board and governance",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under the Reserve Bank of India Act, 1934, the minimum frequency of meetings of the Central Board of the Reserve Bank is:",
+      "explanation": {
+        "steps": [
+          "Section 13 requires the Governor to convene meetings of the Central Board at least six times in each year.",
+          "It also requires at least one meeting in each quarter, so the six meetings cannot be bunched."
+        ],
+        "formula_used": "RBI Act s.13(1)",
+        "trap": "Four meetings a year is the MPC floor, not the Central Board's."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.13 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "At least twice a year, once in each half-year",
+          "is_correct": false,
+          "error": "confuses with half-yearly Monetary Policy Report cycle",
+          "label": "A"
+        },
+        {
+          "text": "At least six times a year and at least once in each quarter",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "At least four times a year, at least once in each quarter",
+          "is_correct": false,
+          "error": "confuses with the MPC's minimum of four meetings a year (s.45ZI)",
+          "label": "C"
+        },
+        {
+          "text": "At least twelve times a year, i.e. once every month",
+          "is_correct": false,
+          "error": "invented monthly requirement",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-002",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-constitution-central-board-and-governance-99cd7abf",
+      "microtopic_name": "RBI Act — Constitution, Central Board and governance",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "The Central Government wishes to require the Reserve Bank to follow a particular course of action in the public interest. Under the RBI Act, it may do so:",
+      "explanation": {
+        "steps": [
+          "Section 7(1): the Central Government may from time to time give such directions to the Bank as it may, after consultation with the Governor, consider necessary in the public interest.",
+          "Consultation with the Governor is a precondition; the MPC has no role in s.7 directions."
+        ],
+        "formula_used": "RBI Act s.7(1)",
+        "trap": "The s.7 power has never been a no-consultation power."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.7 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "By directions issued after consultation with the Governor",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "By directions issued without any prior consultation",
+          "is_correct": false,
+          "error": "omits the mandatory consultation with the Governor in s.7(1)",
+          "label": "B"
+        },
+        {
+          "text": "By directions issued after a resolution of the MPC",
+          "is_correct": false,
+          "error": "confuses general directions with monetary policy decisions of the MPC",
+          "label": "C"
+        },
+        {
+          "text": "Only through an amendment Act passed by Parliament",
+          "is_correct": false,
+          "error": "ignores the statutory direction power in s.7",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-003",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-constitution-central-board-and-governance-99cd7abf",
+      "microtopic_name": "RBI Act — Constitution, Central Board and governance",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Match the provisions of the RBI Act, 1934 with their subject matter:\n\n| Section | Subject |\n|---|---|\n| P. s.7 | 1. Allocation of surplus profits to the Central Government |\n| Q. s.8 | 2. Composition of the Central Board |\n| R. s.13 | 3. Directions by the Central Government after consulting the Governor |\n| S. s.47 | 4. Meetings of the Central Board |",
+      "explanation": {
+        "steps": [
+          "s.7 — Central Government directions after consultation with the Governor.",
+          "s.8 — composition of the Central Board (Governor, Deputy Governors, nominated directors).",
+          "s.13 — meetings of the Central Board.",
+          "s.47 — surplus profits paid to the Central Government."
+        ],
+        "formula_used": "Section map of RBI Act Chapter II–IV",
+        "trap": "s.7 (directions) and s.47 (surplus) are the two most interchanged."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, ss.7, 8, 13, 47 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "P-1, Q-2, R-4, S-3",
+          "is_correct": false,
+          "error": "swaps Central Government directions (s.7) with surplus transfer (s.47)",
+          "label": "A"
+        },
+        {
+          "text": "P-2, Q-3, R-4, S-1",
+          "is_correct": false,
+          "error": "treats s.7 as the Board-composition section",
+          "label": "B"
+        },
+        {
+          "text": "P-3, Q-2, R-4, S-1",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "P-3, Q-4, R-2, S-1",
+          "is_correct": false,
+          "error": "swaps composition (s.8) and meetings (s.13)",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-004",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-note-issue-and-minimum-reserve-system-e05c6590",
+      "microtopic_name": "RBI Act — Note issue and minimum reserve system",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under section 22 of the RBI Act, 1934, the sole right to issue bank notes in India vests in:",
+      "explanation": {
+        "steps": [
+          "s.22 gives the Bank the sole right to issue bank notes in India.",
+          "One-rupee notes are issued by the Government and are treated as coin, not RBI bank notes."
+        ],
+        "formula_used": "RBI Act s.22",
+        "trap": "Printing and issue are different things; issue is a legal right of the RBI."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.22 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "The Reserve Bank of India",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "The Reserve Bank jointly with the State Bank of India",
+          "is_correct": false,
+          "error": "invented joint issue right",
+          "label": "B"
+        },
+        {
+          "text": "The Central Government, acting through its printing presses",
+          "is_correct": false,
+          "error": "confuses printing of notes with the legal right of issue",
+          "label": "C"
+        },
+        {
+          "text": "The Central Government for denominations up to ₹10,000",
+          "is_correct": false,
+          "error": "confuses the s.24 denomination ceiling with the right of issue",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-005",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-note-issue-and-minimum-reserve-system-e05c6590",
+      "microtopic_name": "RBI Act — Note issue and minimum reserve system",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "In a hypothetical stress scenario, the Issue Department of the RBI holds gold coin and bullion valued at ₹110 crore and foreign securities of ₹500,000 crore, besides rupee securities. Judged only against section 33, the position is:",
+      "explanation": {
+        "steps": [
+          "s.33(2) minimum reserve: gold coin, gold bullion and foreign securities together ≥ ₹200 crore.",
+          "Of this, gold coin and bullion alone must be ≥ ₹115 crore; here gold = ₹110 crore.",
+          "Aggregate limb is satisfied, but the gold sub-limit is breached, so the position does not satisfy s.33 (unless suspended under s.37)."
+        ],
+        "formula_used": "Gold + foreign securities ≥ ₹200 crore; gold ≥ ₹115 crore",
+        "trap": "Two tests, both must hold."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.33(2), s.37 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Non-compliant, because gold coin and bullion are below ₹115 crore",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Compliant, because gold holdings are not tested separately",
+          "is_correct": false,
+          "error": "denies the separate gold floor within the minimum reserve",
+          "label": "B"
+        },
+        {
+          "text": "Non-compliant, because foreign securities are not 40% of notes",
+          "is_correct": false,
+          "error": "applies the pre-1956 proportional reserve rule",
+          "label": "C"
+        },
+        {
+          "text": "Compliant, because gold plus foreign securities exceed ₹200 crore",
+          "is_correct": false,
+          "error": "checks only the aggregate limb and misses the gold sub-limit",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-006",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-note-issue-and-minimum-reserve-system-e05c6590",
+      "microtopic_name": "RBI Act — Note issue and minimum reserve system",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "assertion-reason",
+      "stimulus_group": null,
+      "stem": "**Assertion (A):** The Reserve Bank can expand the note issue far beyond the value of the gold and foreign securities it holds.\n\n**Reason (R):** Since the 1956–57 amendments, section 33 requires only a fixed minimum of gold and foreign securities, not a fixed proportion of notes issued.",
+      "explanation": {
+        "steps": [
+          "Before 1956 the RBI followed a proportional reserve system (40% of assets in gold/foreign securities).",
+          "The minimum reserve system (₹200 crore, of which gold ≥ ₹115 crore) replaced it; the reserve does not rise with note issue.",
+          "Hence A is true and R is its correct explanation."
+        ],
+        "formula_used": "RBI Act s.33 (minimum reserve system)",
+        "trap": "The 40% proportional rule is historical."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.33 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "A is false, but R is true",
+          "is_correct": false,
+          "error": "believes note issue is still tied proportionally to gold",
+          "label": "A"
+        },
+        {
+          "text": "A is true, but R is false",
+          "is_correct": false,
+          "error": "treats the minimum reserve system as repealed",
+          "label": "B"
+        },
+        {
+          "text": "Both A and R are true, but R is not the correct explanation of A",
+          "is_correct": false,
+          "error": "misses that the minimum reserve system is the very reason note issue is not tied to gold",
+          "label": "C"
+        },
+        {
+          "text": "Both A and R are true, and R is the correct explanation of A",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTB-007",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-note-issue-and-minimum-reserve-system-e05c6590",
+      "microtopic_name": "RBI Act — Note issue and minimum reserve system",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements about note issue under the RBI Act, 1934:\n\n1. On the recommendation of the Central Board, the Central Government may by notification declare that a series of bank notes of any denomination shall cease to be legal tender.\n2. The Central Board may, on its own, introduce a bank note of ₹20,000 denomination.\n3. The aggregate value of gold coin, gold bullion and foreign securities held as assets of the Issue Department must not be less than ₹200 crore.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "1: s.26(2) — correct.",
+          "2: s.24 — denominations not exceeding ₹10,000, specified by the Central Government on the Board's recommendation — incorrect.",
+          "3: s.33(2) — correct."
+        ],
+        "formula_used": "RBI Act ss.24, 26(2), 33(2)",
+        "trap": "Demonetisation and new denominations both need the Central Government."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, ss.24, 26(2), 33 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "wrongly accepts statement 2: s.24 caps denominations at ₹10,000 and the Central Government specifies them",
+          "label": "A"
+        },
+        {
+          "text": "1 and 3 only",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "3 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 1: s.26(2) demonetisation is by Central Government notification on the Central Board's recommendation",
+          "label": "C"
+        },
+        {
+          "text": "1 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 3: s.33(2) is the minimum reserve provision",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-008",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-cash-reserve-ratio-and-penal-interest-under-s-42-b2e98728",
+      "microtopic_name": "RBI Act — Cash reserve ratio and penal interest under s.42",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A banking company has paid-up capital of ₹3.00 lakh and reserves of ₹2.50 lakh, and RBI is satisfied that its affairs are not conducted detrimentally to depositors. For inclusion in the Second Schedule under s.42(6), its capital position is:",
+      "explanation": {
+        "steps": [
+          "s.42(6)(a): paid-up capital and reserves of aggregate value not less than ₹5 lakh, plus RBI's satisfaction about depositors' interests.",
+          "Aggregate = ₹3.00 lakh + ₹2.50 lakh = ₹5.50 lakh ≥ ₹5 lakh."
+        ],
+        "formula_used": "Paid-up capital + reserves ≥ ₹5 lakh",
+        "trap": "The test is on the aggregate, not paid-up capital alone."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.42(6)(a) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Irrelevant, as only a licence under s.22 is needed",
+          "is_correct": false,
+          "error": "confuses licensing under the BR Act with scheduling under the RBI Act",
+          "label": "A"
+        },
+        {
+          "text": "Inadequate, as the test is ₹10.00 lakh of capital and reserves",
+          "is_correct": false,
+          "error": "confuses with the higher s.11 figures for banks in Mumbai/Kolkata",
+          "label": "B"
+        },
+        {
+          "text": "Inadequate, as paid-up capital alone is below ₹5.00 lakh",
+          "is_correct": false,
+          "error": "tests paid-up capital alone instead of capital plus reserves",
+          "label": "C"
+        },
+        {
+          "text": "Adequate, as paid-up capital and reserves total ₹5.50 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTB-009",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-cash-reserve-ratio-and-penal-interest-under-s-42-b2e98728",
+      "microtopic_name": "RBI Act — Cash reserve ratio and penal interest under s.42",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements on the cash reserve ratio under s.42 of the RBI Act:\n\n1. The Act no longer prescribes a statutory floor or ceiling for the CRR; RBI specifies the percentage.\n2. The CRR is maintained as a percentage of the bank's net demand and time liabilities in India.\n3. The Act obliges RBI to pay interest on the CRR balances of scheduled banks.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "1: Correct — the 2006 amendment removed the 3% floor and 20% ceiling.",
+          "2: Correct — s.42(1) links CRR to total demand and time liabilities (net of specified items).",
+          "3: Incorrect — the provision for interest on CRR balances was omitted; RBI pays no interest on CRR."
+        ],
+        "formula_used": "RBI Act s.42(1) (as amended 2006)",
+        "trap": "The 3%–20% band and interest on CRR are pre-2006 features."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.42(1), RBI (Amendment) Act 2006 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "2 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 1: the 2006 amendment removed the 3%–20% band",
+          "label": "A"
+        },
+        {
+          "text": "1 and 2 only",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "1 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 2: CRR is on net demand and time liabilities",
+          "label": "C"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "wrongly accepts statement 3: interest on eligible CRR balances was discontinued after the 2006 amendment",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-010",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-cash-reserve-ratio-and-penal-interest-under-s-42-b2e98728",
+      "microtopic_name": "RBI Act — Cash reserve ratio and penal interest under s.42",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Kaveri Bank Ltd, a scheduled bank, must hold a stipulated minimum CRR balance of ₹900 crore with RBI at the close of each day. The Bank Rate is 6.50%. Its closing balances for seven consecutive days were:\n\n| Day | 1 | 2 | 3 | 4 | 5 | 6 | 7 |\n|---|---:|---:|---:|---:|---:|---:|---:|\n| Balance (₹ crore) | 912 | 880 | 865 | 905 | 885 | 890 | 901 |\n\nApplying the penal-interest scheme of s.42(3) on a daily basis (365-day year), total penal interest for the week is closest to:",
+      "explanation": {
+        "steps": [
+          "Shortfalls (₹ crore): Day 2 = 20, Day 3 = 35, Day 5 = 15, Day 6 = 10; Days 1, 4, 7 compliant.",
+          "First day of a default run: Bank Rate + 3% = 9.50%; next succeeding day(s): Bank Rate + 5% = 11.50%.",
+          "Day 4 is compliant, so Day 5 starts a fresh run at +3%.",
+          "Penal = (20×9.5% + 35×11.5% + 15×9.5% + 10×11.5%) crore ÷ 365 = ₹2,32,877"
+        ],
+        "formula_used": "Penal = Shortfall × (Bank Rate + 3%/5%) × 1/365",
+        "trap": "A compliant day breaks the chain; the next default starts at +3%."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.42(3); RBI CRR directions (daily minimum) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹2,52,055",
+          "is_correct": false,
+          "error": "charges Bank Rate + 5% from the first day of default",
+          "label": "A"
+        },
+        {
+          "text": "₹2,41,096",
+          "is_correct": false,
+          "error": "treats Day 5 as a continuation although Day 4 was compliant",
+          "label": "B"
+        },
+        {
+          "text": "₹2,32,877",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹2,08,219",
+          "is_correct": false,
+          "error": "charges Bank Rate + 3% on every default day, ignoring the step-up for continuing default",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-011",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-cash-reserve-ratio-and-penal-interest-under-s-42-b2e98728",
+      "microtopic_name": "RBI Act — Cash reserve ratio and penal interest under s.42",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Godavari Bank Ltd's average daily CRR balances for two successive fortnights were (Bank Rate 6.50%):\n\n| Fortnight | Required average (₹ crore) | Actual average (₹ crore) |\n|---|---:|---:|\n| I | 2,400 | 2,352 |\n| II | 2,420 | 2,390 |\n\nUsing the average-basis penal interest of s.42(3) (14-day fortnight, 365-day year), total penal interest for the two fortnights is:",
+      "explanation": {
+        "steps": [
+          "Shortfall I = 48 crore; shortfall II = 30 crore (default continues).",
+          "Fortnight I at Bank Rate + 3% = 9.50%; Fortnight II at Bank Rate + 5% = 11.50%.",
+          "Penal = 48 cr × 9.5% × 14/365 + 30 cr × 11.5% × 14/365 = ₹30.72 lakh"
+        ],
+        "formula_used": "Penal = Avg shortfall × (Bank Rate + 3% / 5%) × 14/365",
+        "trap": "Rates are over the Bank Rate, not flat."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.42(3) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹11.28 lakh",
+          "is_correct": false,
+          "error": "uses 3%/5% flat without adding the Bank Rate",
+          "label": "A"
+        },
+        {
+          "text": "₹34.41 lakh",
+          "is_correct": false,
+          "error": "applies Bank Rate + 5% from the first fortnight of default",
+          "label": "B"
+        },
+        {
+          "text": "₹30.72 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹28.42 lakh",
+          "is_correct": false,
+          "error": "applies Bank Rate + 3% to Fortnight II as well, missing the step-up for continuing default",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-012",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-monetary-policy-committee-and-inflation-targeting-0c02d0f7",
+      "microtopic_name": "RBI Act — Monetary Policy Committee and inflation targeting",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Which of the following is NOT a member of the Monetary Policy Committee constituted under s.45ZB of the RBI Act?",
+      "explanation": {
+        "steps": [
+          "s.45ZB: six members — Governor (chair), Deputy Governor in charge of monetary policy, one RBI officer nominated by the Central Board, and three persons appointed by the Central Government.",
+          "No Government official sits on the MPC."
+        ],
+        "formula_used": "MPC = 3 RBI + 3 external",
+        "trap": "Government nominees sit on the Central Board, not the MPC."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.45ZB — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Governor of the Reserve Bank, as chairperson",
+          "is_correct": false,
+          "error": "the Governor is the ex officio chairperson",
+          "label": "A"
+        },
+        {
+          "text": "Deputy Governor in charge of monetary policy",
+          "is_correct": false,
+          "error": "this Deputy Governor is an ex officio member",
+          "label": "B"
+        },
+        {
+          "text": "Secretary, Department of Economic Affairs",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "One RBI officer nominated by the Central Board",
+          "is_correct": false,
+          "error": "this officer is a member under s.45ZB(2)(c)",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-013",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-monetary-policy-committee-and-inflation-targeting-0c02d0f7",
+      "microtopic_name": "RBI Act — Monetary Policy Committee and inflation targeting",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "case",
+      "stimulus_group": null,
+      "stem": "At a scheduled MPC meeting, the Governor and the Deputy Governor in charge of monetary policy are both abroad. The RBI officer-member and all three external members attend. Can the meeting transact business?",
+      "explanation": {
+        "steps": [
+          "s.45ZI: quorum is four members, one of whom must be the Governor and, in his absence, the Deputy Governor who is a member.",
+          "Four are present but neither the Governor nor the Deputy Governor is among them — no quorum."
+        ],
+        "formula_used": "Quorum = 4 incl. Governor (or DG in his absence)",
+        "trap": "Quorum has a headcount AND a composition limb."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.45ZI — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Yes; four members are present, which meets the quorum of four",
+          "is_correct": false,
+          "error": "counts heads but ignores the composition condition of the quorum",
+          "label": "A"
+        },
+        {
+          "text": "No; neither the Governor nor the Deputy Governor is present",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "No; the quorum is five of the six members of the Committee",
+          "is_correct": false,
+          "error": "wrong quorum number",
+          "label": "C"
+        },
+        {
+          "text": "Yes; the RBI officer-member can preside and complete the quorum",
+          "is_correct": false,
+          "error": "assumes the officer-member substitutes for the Governor",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-014",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-monetary-policy-committee-and-inflation-targeting-0c02d0f7",
+      "microtopic_name": "RBI Act — Monetary Policy Committee and inflation targeting",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "case",
+      "stimulus_group": null,
+      "stem": "All six MPC members vote. The Governor, the Deputy Governor and the RBI officer-member vote for a 25 bp cut in the policy repo rate; the three external members vote for no change. The outcome is:",
+      "explanation": {
+        "steps": [
+          "s.45ZI: questions are decided by majority of members present and voting; each member has one vote.",
+          "On equality of votes, the Governor has a second or casting vote; he voted for the cut."
+        ],
+        "formula_used": "Tie → Governor's casting vote",
+        "trap": "No Government role in MPC voting."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.45ZI — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Deferred to the next meeting for a fresh vote on the rate",
+          "is_correct": false,
+          "error": "invents deferral on equality of votes",
+          "label": "A"
+        },
+        {
+          "text": "No change, as a tied vote preserves the existing rate",
+          "is_correct": false,
+          "error": "assumes a tie defaults to status quo",
+          "label": "B"
+        },
+        {
+          "text": "Referred to the Central Government to break the tie",
+          "is_correct": false,
+          "error": "invents a Government role in MPC decisions",
+          "label": "C"
+        },
+        {
+          "text": "A 25 bp cut, carried by the Governor's second or casting vote",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTB-015",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-monetary-policy-committee-and-inflation-targeting-0c02d0f7",
+      "microtopic_name": "RBI Act — Monetary Policy Committee and inflation targeting",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "The notified inflation target is 4% CPI inflation with an upper tolerance of 6% and a lower tolerance of 2%. Average CPI inflation (%) by quarter:\n\n| Quarter | Q1 | Q2 | Q3 | Q4 | Q5 | Q6 | Q7 |\n|---|---:|---:|---:|---:|---:|---:|---:|\n| CPI (%) | 6.3 | 6.1 | 5.9 | 6.4 | 6.2 | 6.05 | 5.7 |\n\nUnder the failure criterion in the framework notified with s.45ZA/45ZN, RBI is first regarded as having failed to meet the target at the end of:",
+      "explanation": {
+        "steps": [
+          "Failure = average inflation above the upper tolerance (or below the lower) for three consecutive quarters.",
+          "Q1, Q2 > 6% but Q3 = 5.9% breaks the run.",
+          "Q4 = 6.4, Q5 = 6.2, Q6 = 6.05 — three consecutive quarters above 6% → failure at end-Q6; s.45ZN report follows."
+        ],
+        "formula_used": "3 consecutive quarters outside 2%–6%",
+        "trap": "Each quarter must breach; averaging three quarters is not the test."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, ss.45ZA, 45ZN read with the 2016 Central Govt notification on failure factors — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Q3",
+          "is_correct": false,
+          "error": "uses the three-quarter average (6.10%) instead of three consecutive quarters each above 6%",
+          "label": "A"
+        },
+        {
+          "text": "Q2",
+          "is_correct": false,
+          "error": "treats two consecutive quarters above tolerance as failure",
+          "label": "B"
+        },
+        {
+          "text": "Q5",
+          "is_correct": false,
+          "error": "counts Q1, Q2, Q4, Q5 cumulatively ignoring the break at Q3",
+          "label": "C"
+        },
+        {
+          "text": "Q6",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTB-016",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-monetary-policy-committee-and-inflation-targeting-0c02d0f7",
+      "microtopic_name": "RBI Act — Monetary Policy Committee and inflation targeting",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements on the monetary policy framework in Chapter IIIF of the RBI Act:\n\n1. RBI publishes the minutes of MPC proceedings on the fourteenth day after every meeting.\n2. RBI publishes a Monetary Policy Report once every quarter.\n3. An external member of the MPC holds office for four years and is not eligible for reappointment.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "1: Correct — minutes (resolution, votes, members' statements) on the 14th day.",
+          "2: Incorrect — the Monetary Policy Report is published once in every six months.",
+          "3: Correct — four-year term, no reappointment."
+        ],
+        "formula_used": "RBI Act ss.45ZC, 45ZL, 45ZM",
+        "trap": "MPC meets at least four times a year; the MPR is only half-yearly."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, ss.45ZC, 45ZL, 45ZM — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "1 and 3 only",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "3 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 1: s.45ZL minutes on the fourteenth day",
+          "label": "B"
+        },
+        {
+          "text": "1 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 3: external members serve four years and are not eligible for reappointment",
+          "label": "C"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "wrongly accepts statement 2: the MPR is half-yearly under s.45ZM",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-017",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-nbfc-regulation-under-chapter-iiib-ccecfce5",
+      "microtopic_name": "RBI Act — NBFC regulation under Chapter IIIB",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under s.45-IA of the RBI Act, a non-banking financial company must have net owned fund of ₹25 lakh or such other amount as RBI may specify by notification, subject to a ceiling of:",
+      "explanation": {
+        "steps": [
+          "s.45-IA(1)(b) originally allowed RBI to specify up to ₹200 lakh (₹2 crore).",
+          "The Finance (No. 2) Act, 2019 raised this ceiling to ₹100 crore; RBI's category-wise minimums are set within it."
+        ],
+        "formula_used": "RBI Act s.45-IA(1)(b) as amended 2019",
+        "trap": "₹2 crore is the old ceiling; ₹10 crore is an RBI-set requirement, not the ceiling."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.45-IA(1)(b), Finance (No. 2) Act 2019 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹200 crore",
+          "is_correct": false,
+          "error": "reads 'two hundred lakh' as two hundred crore",
+          "label": "A"
+        },
+        {
+          "text": "₹100 crore",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹2 crore",
+          "is_correct": false,
+          "error": "pre-2019 ceiling of two hundred lakh rupees",
+          "label": "C"
+        },
+        {
+          "text": "₹10 crore",
+          "is_correct": false,
+          "error": "confuses the RBI-specified minimum for a class of NBFCs with the statutory ceiling",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-018",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-nbfc-regulation-under-chapter-iiib-ccecfce5",
+      "microtopic_name": "RBI Act — NBFC regulation under Chapter IIIB",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "NBFC-CASE",
+      "stem": "**Case — Vardhan Capital Ltd.** Vardhan Capital Ltd is a company that lends to small traders and also accepts public deposits. Extracts (₹ crore):\n\n| Item | ₹ crore |\n|---|---:|\n| Total assets | 240 |\n| Financial assets | 150 |\n| Gross income | 36 |\n| Income from financial assets | 21 |\n| Paid-up equity capital | 40 |\n| Free reserves | 22 |\n| Intangible assets | 3 |\n| Deferred revenue expenditure | 1 |\n| Equity shares of its subsidiary | 6 |\n| Equity shares of another NBFC | 3 |\n| Loan to a group company | 4 |\n| Shares of an unrelated listed manufacturing company | 5 |\n| Net profit as per P&L (current year) | 8.4 |\n| Proposed dividend | 3 |\n| Public deposits: 31 Mar / 30 Jun / 30 Sep | 110 / 120 / 128 |\n\nAssume RBI's principal-business test (financial assets > 50% of total assets AND income from financial assets > 50% of gross income) and a liquid-asset requirement of 15% of public deposits specified under s.45-IB.\n\n**Q1.** Does Vardhan Capital require a certificate of registration under s.45-IA?",
+      "explanation": {
+        "steps": [
+          "Financial assets ÷ total assets = 150 ÷ 240 = 62.5% > 50%.",
+          "Income from financial assets ÷ gross income = 21 ÷ 36 = 58.3% > 50%.",
+          "Both limbs met → principal business is financial → NBFC → CoR required before carrying on business (s.45-IA)."
+        ],
+        "formula_used": "50-50 principal business test",
+        "trap": "Both limbs must exceed 50%; there is no size trigger."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.45-I(f), s.45-IA; RBI principal-business criteria (given) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Yes, but only because its financial assets exceed ₹100 crore",
+          "is_correct": false,
+          "error": "invents an asset-size trigger for registration",
+          "label": "A"
+        },
+        {
+          "text": "Yes; financial assets are 62.5% of assets and income 58.3%",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "No; income share of 58.3% is below the 60% threshold",
+          "is_correct": false,
+          "error": "applies an invented 60% income threshold",
+          "label": "C"
+        },
+        {
+          "text": "No; accepting deposits makes it a bank under the BR Act",
+          "is_correct": false,
+          "error": "confuses deposit-taking NBFC with banking under s.5(b) BR Act",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-019",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-nbfc-regulation-under-chapter-iiib-ccecfce5",
+      "microtopic_name": "RBI Act — NBFC regulation under Chapter IIIB",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "NBFC-CASE",
+      "stem": "**Case — Vardhan Capital Ltd.** Vardhan Capital Ltd is a company that lends to small traders and also accepts public deposits. Extracts (₹ crore):\n\n| Item | ₹ crore |\n|---|---:|\n| Total assets | 240 |\n| Financial assets | 150 |\n| Gross income | 36 |\n| Income from financial assets | 21 |\n| Paid-up equity capital | 40 |\n| Free reserves | 22 |\n| Intangible assets | 3 |\n| Deferred revenue expenditure | 1 |\n| Equity shares of its subsidiary | 6 |\n| Equity shares of another NBFC | 3 |\n| Loan to a group company | 4 |\n| Shares of an unrelated listed manufacturing company | 5 |\n| Net profit as per P&L (current year) | 8.4 |\n| Proposed dividend | 3 |\n| Public deposits: 31 Mar / 30 Jun / 30 Sep | 110 / 120 / 128 |\n\nAssume RBI's principal-business test (financial assets > 50% of total assets AND income from financial assets > 50% of gross income) and a liquid-asset requirement of 15% of public deposits specified under s.45-IB.\n\n**Q2.** Net owned fund of Vardhan Capital as defined in the Explanation to s.45-IA is:",
+      "explanation": {
+        "steps": [
+          "Owned fund = equity + free reserves − intangibles − DRE = 40 + 22 − 3 − 1 = ₹58.00 crore.",
+          "Exposure to subsidiary, group companies and other NBFCs = 6 + 3 + 4 = ₹13.00 crore; 10% of owned fund = ₹5.80 crore.",
+          "Deduct only the excess: ₹13.00 crore − ₹5.80 crore = ₹7.20 crore.",
+          "NOF = ₹58.00 crore − ₹7.20 crore = ₹50.80 crore. Unrelated non-NBFC shares are not deducted."
+        ],
+        "formula_used": "NOF = Owned fund − (Group/NBFC exposure − 10% of owned fund)",
+        "trap": "Only the excess over 10% is deducted."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.45-IA, Explanation — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹50.80 crore",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹55.20 crore",
+          "is_correct": false,
+          "error": "does not deduct intangible assets and deferred revenue expenditure",
+          "label": "B"
+        },
+        {
+          "text": "₹45.00 crore",
+          "is_correct": false,
+          "error": "deducts the whole group/NBFC exposure instead of only the excess over 10% of owned fund",
+          "label": "C"
+        },
+        {
+          "text": "₹45.80 crore",
+          "is_correct": false,
+          "error": "also deducts shares of the unrelated manufacturing company",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-020",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-nbfc-regulation-under-chapter-iiib-ccecfce5",
+      "microtopic_name": "RBI Act — NBFC regulation under Chapter IIIB",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "NBFC-CASE",
+      "stem": "**Case — Vardhan Capital Ltd.** Vardhan Capital Ltd is a company that lends to small traders and also accepts public deposits. Extracts (₹ crore):\n\n| Item | ₹ crore |\n|---|---:|\n| Total assets | 240 |\n| Financial assets | 150 |\n| Gross income | 36 |\n| Income from financial assets | 21 |\n| Paid-up equity capital | 40 |\n| Free reserves | 22 |\n| Intangible assets | 3 |\n| Deferred revenue expenditure | 1 |\n| Equity shares of its subsidiary | 6 |\n| Equity shares of another NBFC | 3 |\n| Loan to a group company | 4 |\n| Shares of an unrelated listed manufacturing company | 5 |\n| Net profit as per P&L (current year) | 8.4 |\n| Proposed dividend | 3 |\n| Public deposits: 31 Mar / 30 Jun / 30 Sep | 110 / 120 / 128 |\n\nAssume RBI's principal-business test (financial assets > 50% of total assets AND income from financial assets > 50% of gross income) and a liquid-asset requirement of 15% of public deposits specified under s.45-IB.\n\n**Q3.** The minimum transfer to reserve fund required by s.45-IC for the year is:",
+      "explanation": {
+        "steps": [
+          "s.45-IC: every NBFC shall create a reserve fund and transfer not less than 20% of net profit, as disclosed in the P&L, before declaring any dividend.",
+          "20% × 8.4 crore = ₹1.68 crore."
+        ],
+        "formula_used": "Transfer ≥ 20% × net profit (before dividend)",
+        "trap": "The base is profit before dividend."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.45-IC — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹1.68 crore",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹2.10 crore",
+          "is_correct": false,
+          "error": "applies 25%, the RBI-prescribed statutory reserve rate for banks",
+          "label": "B"
+        },
+        {
+          "text": "₹1.08 crore",
+          "is_correct": false,
+          "error": "computes 20% on profit after the proposed dividend",
+          "label": "C"
+        },
+        {
+          "text": "₹0.84 crore",
+          "is_correct": false,
+          "error": "applies 10%, an invented lower rate",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-021",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-nbfc-regulation-under-chapter-iiib-ccecfce5",
+      "microtopic_name": "RBI Act — NBFC regulation under Chapter IIIB",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "NBFC-CASE",
+      "stem": "**Case — Vardhan Capital Ltd.** Vardhan Capital Ltd is a company that lends to small traders and also accepts public deposits. Extracts (₹ crore):\n\n| Item | ₹ crore |\n|---|---:|\n| Total assets | 240 |\n| Financial assets | 150 |\n| Gross income | 36 |\n| Income from financial assets | 21 |\n| Paid-up equity capital | 40 |\n| Free reserves | 22 |\n| Intangible assets | 3 |\n| Deferred revenue expenditure | 1 |\n| Equity shares of its subsidiary | 6 |\n| Equity shares of another NBFC | 3 |\n| Loan to a group company | 4 |\n| Shares of an unrelated listed manufacturing company | 5 |\n| Net profit as per P&L (current year) | 8.4 |\n| Proposed dividend | 3 |\n| Public deposits: 31 Mar / 30 Jun / 30 Sep | 110 / 120 / 128 |\n\nAssume RBI's principal-business test (financial assets > 50% of total assets AND income from financial assets > 50% of gross income) and a liquid-asset requirement of 15% of public deposits specified under s.45-IB.\n\n**Q4.** For the quarter October–December, the liquid assets Vardhan Capital must maintain under s.45-IB are:",
+      "explanation": {
+        "steps": [
+          "s.45-IB: liquid assets as a specified percentage (5% to 25%) of deposits outstanding at the close of business on the last working day of the second preceding quarter.",
+          "For Oct–Dec, the second preceding quarter ends 30 June: 15% × ₹120 crore = ₹18.00 crore."
+        ],
+        "formula_used": "Liquid assets = % × deposits at end of second preceding quarter",
+        "trap": "Second preceding, not immediately preceding."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.45-IB — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹16.50 crore",
+          "is_correct": false,
+          "error": "uses deposits at the end of the third preceding quarter",
+          "label": "A"
+        },
+        {
+          "text": "₹18.00 crore",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹19.20 crore",
+          "is_correct": false,
+          "error": "uses deposits at the end of the immediately preceding quarter",
+          "label": "C"
+        },
+        {
+          "text": "₹30.00 crore",
+          "is_correct": false,
+          "error": "applies the 25% statutory ceiling instead of the specified rate",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-022",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-nbfc-regulation-under-chapter-iiib-ccecfce5",
+      "microtopic_name": "RBI Act — NBFC regulation under Chapter IIIB",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "NBFC-CASE",
+      "stem": "**Case — Vardhan Capital Ltd.** Vardhan Capital Ltd is a company that lends to small traders and also accepts public deposits. Extracts (₹ crore):\n\n| Item | ₹ crore |\n|---|---:|\n| Total assets | 240 |\n| Financial assets | 150 |\n| Gross income | 36 |\n| Income from financial assets | 21 |\n| Paid-up equity capital | 40 |\n| Free reserves | 22 |\n| Intangible assets | 3 |\n| Deferred revenue expenditure | 1 |\n| Equity shares of its subsidiary | 6 |\n| Equity shares of another NBFC | 3 |\n| Loan to a group company | 4 |\n| Shares of an unrelated listed manufacturing company | 5 |\n| Net profit as per P&L (current year) | 8.4 |\n| Proposed dividend | 3 |\n| Public deposits: 31 Mar / 30 Jun / 30 Sep | 110 / 120 / 128 |\n\nAssume RBI's principal-business test (financial assets > 50% of total assets AND income from financial assets > 50% of gross income) and a liquid-asset requirement of 15% of public deposits specified under s.45-IB.\n\n**Q5.** RBI later finds that Vardhan Capital has repeatedly delayed repayment of matured deposits. Consider these actions:\n\n1. Prohibit the company from accepting any fresh deposit.\n2. Itself order the winding up of the company without approaching the Tribunal.\n3. Direct the company not to sell, transfer or otherwise alienate its property without RBI's prior permission.\n\nWhich of these are within RBI's powers under Chapter IIIB?",
+      "explanation": {
+        "steps": [
+          "1: s.45-MB(1) — RBI may prohibit acceptance of deposits.",
+          "2: Not within power — under s.45-MC, RBI may file a winding-up petition; the order is the Tribunal's.",
+          "3: s.45-MB(2) — RBI may prohibit alienation of property."
+        ],
+        "formula_used": "RBI Act ss.45-MB, 45-MC",
+        "trap": "RBI petitions for winding up; it cannot order it."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, ss.45-MB, 45-MC — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "3 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 1: s.45-MB(1) empowers RBI to prohibit acceptance of deposits",
+          "label": "A"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "wrongly accepts statement 2: RBI can only file a winding-up petition (s.45-MC); winding up is ordered by the Tribunal",
+          "label": "B"
+        },
+        {
+          "text": "1 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 3: s.45-MB(2) lets RBI restrain sale or transfer of property",
+          "label": "C"
+        },
+        {
+          "text": "1 and 3 only",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTB-023",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-business-of-the-bank-and-lender-of-last-resort-9da17137",
+      "microtopic_name": "RBI Act — Business of the Bank and lender of last resort",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "The provision that lets RBI, on a 'special occasion', purchase or discount bills and make loans notwithstanding the limitations in s.17 — the statutory basis of its emergency lender-of-last-resort role — is:",
+      "explanation": {
+        "steps": [
+          "s.18 (power of direct discount): in special occasions, for regulating credit in the interests of trade, commerce, industry and agriculture, RBI may lend or discount notwithstanding s.17 limitations.",
+          "This is the legal basis for emergency liquidity support."
+        ],
+        "formula_used": "RBI Act s.18",
+        "trap": "s.17 lists routine business; s.18 overrides its limits in emergencies."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, s.18 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Section 45-L",
+          "is_correct": false,
+          "error": "power over NBFCs, not emergency lending",
+          "label": "A"
+        },
+        {
+          "text": "Section 42",
+          "is_correct": false,
+          "error": "cash reserve requirement, not lending",
+          "label": "B"
+        },
+        {
+          "text": "Section 18",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Section 17(4)",
+          "is_correct": false,
+          "error": "ordinary secured lending, which is subject to the s.17 limits",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-024",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-business-of-the-bank-and-lender-of-last-resort-9da17137",
+      "microtopic_name": "RBI Act — Business of the Bank and lender of last resort",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "case",
+      "stimulus_group": null,
+      "stem": "Which of the following transactions would the Reserve Bank be barred from undertaking by the RBI Act?",
+      "explanation": {
+        "steps": [
+          "s.19 bars RBI from advancing money on the security of immovable property (other than its own premises).",
+          "Government securities, Government deposits and SDF deposits are all permitted business under s.17."
+        ],
+        "formula_used": "RBI Act s.19 vs s.17",
+        "trap": "The SDF is an explicit statutory carve-out from the ban on paying interest."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, ss.17, 19; Finance Act 2018 (SDF) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Loan to a scheduled bank secured by a mortgage on its office building",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Purchase of Government of India securities in open market operations",
+          "is_correct": false,
+          "error": "s.17(8) permits purchase and sale of Government securities",
+          "label": "B"
+        },
+        {
+          "text": "Accepting interest-free deposits from a State Government",
+          "is_correct": false,
+          "error": "s.17(1) permits deposits from Central and State Governments",
+          "label": "C"
+        },
+        {
+          "text": "Accepting interest-bearing deposits under its Standing Deposit Facility",
+          "is_correct": false,
+          "error": "permitted by s.17 since the Finance Act, 2018",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-025",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-rbi-act-business-of-the-bank-and-lender-of-last-resort-9da17137",
+      "microtopic_name": "RBI Act — Business of the Bank and lender of last resort",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements on the business of the Reserve Bank:\n\n1. RBI is obliged to transact the banking business of the Central Government, while it transacts the business of a State Government by agreement.\n2. RBI may accept deposits from banks and others, repayable with interest and without collateral, under the Standing Deposit Facility.\n3. In its normal course of business, RBI may grant unsecured loans to any company engaged in infrastructure.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "1: Correct — s.20 (Central Government, obligatory) and s.21A (States, by agreement).",
+          "2: Correct — s.17 amended by the Finance Act, 2018 to enable the SDF.",
+          "3: Incorrect — s.19 prohibits unsecured loans except as permitted."
+        ],
+        "formula_used": "RBI Act ss.17, 19, 20, 21A",
+        "trap": "Central Government business is mandatory; State business is contractual."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Reserve Bank of India Act, 1934, ss.17, 19, 20, 21A — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "2 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 1: s.20 is obligatory for the Central Government; s.21A is by agreement with States",
+          "label": "A"
+        },
+        {
+          "text": "1 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 2: the Finance Act 2018 enabled uncollateralised SDF deposits",
+          "label": "B"
+        },
+        {
+          "text": "1 and 2 only",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "wrongly accepts statement 3: s.19 bars unsecured lending outside the s.17/s.18 framework",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-026",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-definitions-and-permitted-business-33d31cb6",
+      "microtopic_name": "BR Act — Definitions and permitted business",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Tarang Textiles Ltd accepts deposits from the public solely to finance its own spinning business. Under the Banking Regulation Act, it is:",
+      "explanation": {
+        "steps": [
+          "s.5(b): banking = accepting, for lending or investment, deposits from the public repayable on demand or otherwise and withdrawable by cheque, draft, order or otherwise.",
+          "Explanation to s.5(c): a company engaged in manufacture that accepts deposits merely to finance its own business is not deemed to transact banking."
+        ],
+        "formula_used": "BR Act s.5(b), s.5(c) Explanation",
+        "trap": "Purpose of the deposits (lending/investment) is the key element."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.5(b), (c) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "A banking company unless the Central Government exempts it",
+          "is_correct": false,
+          "error": "invents an exemption route; the Explanation settles it",
+          "label": "A"
+        },
+        {
+          "text": "A banking company, as it accepts deposits from the public",
+          "is_correct": false,
+          "error": "ignores the 'for the purpose of lending or investment' element of s.5(b)",
+          "label": "B"
+        },
+        {
+          "text": "A banking company only if deposits are withdrawable by cheque",
+          "is_correct": false,
+          "error": "treats cheque withdrawal as the sole test",
+          "label": "C"
+        },
+        {
+          "text": "Not a banking company; the deposits are not for lending",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTB-027",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-definitions-and-permitted-business-33d31cb6",
+      "microtopic_name": "BR Act — Definitions and permitted business",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Sagar Bank Ltd took possession of cotton bales pledged by a defaulting borrower and now proposes to sell them. Under s.8 of the BR Act, the sale is:",
+      "explanation": {
+        "steps": [
+          "s.8 bars a banking company from directly or indirectly buying, selling or bartering goods.",
+          "The exception: dealings in connection with the realisation of security given to or held by it."
+        ],
+        "formula_used": "BR Act s.8",
+        "trap": "Seven years is the s.9 rule for immovable property, not goods."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.8 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Permitted, as it is made in realising security for a loan",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Permitted only if the bales are held for over seven years",
+          "is_correct": false,
+          "error": "confuses with the s.9 immovable-property disposal period",
+          "label": "B"
+        },
+        {
+          "text": "Prohibited, as a bank may never buy, sell or barter goods",
+          "is_correct": false,
+          "error": "ignores the realisation-of-security exception in s.8",
+          "label": "C"
+        },
+        {
+          "text": "Permitted only after prior approval of the Central Government",
+          "is_correct": false,
+          "error": "invents a Central Government approval",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-028",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-definitions-and-permitted-business-33d31cb6",
+      "microtopic_name": "BR Act — Definitions and permitted business",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "On 15 March 2019, Malabar Bank Ltd acquired a warehouse in satisfaction of a borrower's debt. It does not need the warehouse for its own use. If RBI grants the maximum extension permissible under s.9, the latest date by which the bank must dispose of the warehouse is:",
+      "explanation": {
+        "steps": [
+          "s.9: immovable property not required for own use may not be held beyond seven years from acquisition.",
+          "Basic deadline = 15 March 2026; RBI may extend by up to five years → 15 March 2031."
+        ],
+        "formula_used": "Deadline = acquisition + 7 years (+ up to 5 years' extension)",
+        "trap": "7 + 5, not 5 + 5."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.9 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "15 March 2031",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "15 March 2029",
+          "is_correct": false,
+          "error": "takes the basic holding period as five years instead of seven",
+          "label": "B"
+        },
+        {
+          "text": "15 March 2033",
+          "is_correct": false,
+          "error": "takes the maximum extension as seven years",
+          "label": "C"
+        },
+        {
+          "text": "15 March 2026",
+          "is_correct": false,
+          "error": "ignores the extension RBI may grant",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-029",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-definitions-and-permitted-business-33d31cb6",
+      "microtopic_name": "BR Act — Definitions and permitted business",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements under the Banking Regulation Act, 1949:\n\n1. A manufacturing company that accepts public deposits merely to finance its own business is deemed to transact the business of banking.\n2. A company other than a banking company generally may not use the word 'bank', 'banker' or 'banking' as part of its name.\n3. A banking company may not engage in any form of business other than those referred to in s.6(1).\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "1: Incorrect — Explanation to s.5(c).",
+          "2: Correct — s.7.",
+          "3: Correct — s.6(2)."
+        ],
+        "formula_used": "BR Act ss.5, 6, 7",
+        "trap": "Statement 1 inverts the Explanation."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, ss.5(c), 6, 7 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "2 and 3 only",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "wrongly accepts statement 1: the Explanation to s.5(c) excludes such a manufacturer",
+          "label": "B"
+        },
+        {
+          "text": "2 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 3: s.6(2) confines a banking company to the business listed in s.6(1)",
+          "label": "C"
+        },
+        {
+          "text": "3 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 2: s.7 restricts the words bank, banker, banking to banking companies (with limited exceptions)",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-030",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-capital-voting-rights-and-reserve-fund-9b96f0b5",
+      "microtopic_name": "BR Act — Capital, voting rights and reserve fund",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Deccan Bank Ltd, incorporated in India, reports net profit of ₹146 crore in its profit and loss account and intends to declare a dividend. The minimum it must transfer to the reserve fund under s.17 of the BR Act is:",
+      "explanation": {
+        "steps": [
+          "s.17(1): before declaring dividend, transfer not less than 20% of profit as disclosed in the P&L to the reserve fund.",
+          "20% × ₹146 crore = ₹29.20 crore. (RBI separately asks banks to transfer 25%, but the statutory floor is 20%.)"
+        ],
+        "formula_used": "Reserve transfer ≥ 20% × profit",
+        "trap": "Statute says 20%; the 25% figure is an RBI prudential stipulation."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.17(1) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹23.36 crore",
+          "is_correct": false,
+          "error": "computes 20% on profit after the transfer itself",
+          "label": "A"
+        },
+        {
+          "text": "₹36.50 crore",
+          "is_correct": false,
+          "error": "applies RBI's 25% prudential statutory-reserve stipulation as the statutory minimum",
+          "label": "B"
+        },
+        {
+          "text": "₹14.60 crore",
+          "is_correct": false,
+          "error": "applies an invented 10% rate",
+          "label": "C"
+        },
+        {
+          "text": "₹29.20 crore",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTB-031",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-capital-voting-rights-and-reserve-fund-9b96f0b5",
+      "microtopic_name": "BR Act — Capital, voting rights and reserve fund",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Indus Bank Ltd has authorised capital ₹600 crore, subscribed capital ₹320 crore and paid-up capital ₹150 crore, all in equity shares. Under s.12(1) of the BR Act, the bank:",
+      "explanation": {
+        "steps": [
+          "s.12(1)(i): subscribed ≥ ½ authorised → ₹320 crore ≥ ₹300 crore ✓.",
+          "s.12(1)(ii): paid-up ≥ ½ subscribed → ₹150 crore < ₹160 crore ✗."
+        ],
+        "formula_used": "Subscribed ≥ ½ Authorised; Paid-up ≥ ½ Subscribed",
+        "trap": "Paid-up is tested against subscribed, not authorised."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.12(1) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Breaches only the rule that subscribed capital be at least half of authorised",
+          "is_correct": false,
+          "error": "misreads 320 ≥ 300 as a breach",
+          "label": "A"
+        },
+        {
+          "text": "Breaches both rules, as paid-up capital is below half of authorised",
+          "is_correct": false,
+          "error": "compares paid-up capital with authorised capital",
+          "label": "B"
+        },
+        {
+          "text": "Breaches only the rule that paid-up capital be at least half of subscribed",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Breaches neither rule, as only the s.11 minimum capital is relevant",
+          "is_correct": false,
+          "error": "ignores s.12(1) capital-structure conditions",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-032",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-capital-voting-rights-and-reserve-fund-9b96f0b5",
+      "microtopic_name": "BR Act — Capital, voting rights and reserve fund",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A private sector banking company has 50 crore equity shares (one vote each). An investor, with all required approvals, holds 16 crore shares. The maximum votes the investor can exercise on a poll is:",
+      "explanation": {
+        "steps": [
+          "s.12(2): no shareholder may exercise voting rights beyond the ceiling; the Act permits RBI to raise it in phases from 10% to 26%, and RBI has notified 26%.",
+          "26% × 50 crore = 13 crore votes (holding = 32%)."
+        ],
+        "formula_used": "Votes = min(holding, 26% × total votes)",
+        "trap": "The ceiling is on total voting rights of all shareholders."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.12(2) and RBI notification raising ceiling to 26% — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "5 crore votes",
+          "is_correct": false,
+          "error": "applies the 10% ceiling in the main text, ignoring RBI's raising of the ceiling to 26%",
+          "label": "A"
+        },
+        {
+          "text": "4.16 crore votes",
+          "is_correct": false,
+          "error": "applies 26% to the investor's own holding instead of total voting rights",
+          "label": "B"
+        },
+        {
+          "text": "13 crore votes",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "16 crore votes",
+          "is_correct": false,
+          "error": "no voting-rights ceiling applied",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-033",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-capital-voting-rights-and-reserve-fund-9b96f0b5",
+      "microtopic_name": "BR Act — Capital, voting rights and reserve fund",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under s.12B of the BR Act, a person needs RBI's prior approval to acquire shares or voting rights that would take his holding in a banking company to:",
+      "explanation": {
+        "steps": [
+          "s.12B (inserted 2012): prior approval of RBI for acquisition resulting in 5% or more of paid-up share capital or total voting rights."
+        ],
+        "formula_used": "BR Act s.12B",
+        "trap": "5% for acquisition approval; 26% is the voting cap."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.12B — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "26% or more of paid-up capital or voting rights",
+          "is_correct": false,
+          "error": "confuses with the raised voting-rights ceiling",
+          "label": "A"
+        },
+        {
+          "text": "More than 2% of paid-up capital or voting rights",
+          "is_correct": false,
+          "error": "invented threshold",
+          "label": "B"
+        },
+        {
+          "text": "5% or more of paid-up capital or total voting rights",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "10% or more of paid-up capital or voting rights",
+          "is_correct": false,
+          "error": "confuses with the base voting ceiling in s.12(2)",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-034",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-capital-voting-rights-and-reserve-fund-9b96f0b5",
+      "microtopic_name": "BR Act — Capital, voting rights and reserve fund",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Harbour Bank plc, incorporated outside India, has branches in India. For the calendar year, its profit as disclosed in the P&L is ₹120 crore on Indian business and ₹900 crore worldwide. The amount it must deposit with RBI under s.11(2)(b)(ii) for the year is:",
+      "explanation": {
+        "steps": [
+          "s.11(2)(b)(ii): a foreign bank must deposit with RBI, after each calendar year, 20% of its profit for that year on business transacted through its branches in India.",
+          "20% × ₹120 crore = ₹24.00 crore."
+        ],
+        "formula_used": "Deposit = 20% × Indian-branch profit",
+        "trap": "Base is Indian-branch profit; s.17 is irrelevant here."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.11(2)(b)(ii) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹24.00 crore",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹19.20 crore",
+          "is_correct": false,
+          "error": "first deducts an s.17 reserve transfer, which applies to Indian-incorporated banks",
+          "label": "B"
+        },
+        {
+          "text": "₹30.00 crore",
+          "is_correct": false,
+          "error": "applies 25% instead of 20%",
+          "label": "C"
+        },
+        {
+          "text": "₹180.00 crore",
+          "is_correct": false,
+          "error": "applies 20% to worldwide profit instead of Indian-branch profit",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-035",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-loans-to-directors-and-restrictions-on-shareholding-8b0bb121",
+      "microtopic_name": "BR Act — Loans to directors and restrictions on shareholding",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "case",
+      "stimulus_group": null,
+      "stem": "Mr Kapoor is a director of Vasant Bank Ltd. He is also a director of Alpha Pvt Ltd, a partner in Beta & Co., a director of Gamma Power Ltd (a government company) and a guarantor for his nephew's personal borrowings. Which proposed loan by Vasant Bank is NOT hit by s.20(1)?",
+      "explanation": {
+        "steps": [
+          "s.20(1)(b) bars loans to directors, firms where a director is partner/guarantor, companies where a director is director/manager/employee/guarantor or holds substantial interest, and individuals for whom a director is partner or guarantor.",
+          "Subsidiaries, s.8 companies and government companies are excluded from the company limb."
+        ],
+        "formula_used": "BR Act s.20(1)",
+        "trap": "Government companies are carved out of the company limb."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.20(1) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Personal loan to his nephew",
+          "is_correct": false,
+          "error": "individual for whom the director is guarantor — prohibited",
+          "label": "A"
+        },
+        {
+          "text": "Working-capital loan to Alpha Pvt Ltd",
+          "is_correct": false,
+          "error": "company of which the bank's director is a director — prohibited",
+          "label": "B"
+        },
+        {
+          "text": "Term loan to Gamma Power Ltd",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Overdraft to Beta & Co.",
+          "is_correct": false,
+          "error": "firm in which the director is a partner — prohibited",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-036",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-loans-to-directors-and-restrictions-on-shareholding-8b0bb121",
+      "microtopic_name": "BR Act — Loans to directors and restrictions on shareholding",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": null,
+      "stem": "Ms Rao, a director of Nilgiri Bank Ltd, holds shares of paid-up value ₹1.80 lakh in Orchid Foods Pvt Ltd (paid-up capital ₹30.00 lakh); her husband holds shares of paid-up value ₹1.50 lakh. For s.20, does Ms Rao hold a 'substantial interest' in Orchid Foods under s.5(ne)?",
+      "explanation": {
+        "steps": [
+          "s.5(ne): beneficial interest held singly or with spouse/minor child, whose paid-up amount exceeds the fixed rupee limit or 10% of paid-up capital, whichever is less.",
+          "10% of ₹30.00 lakh = ₹3.00 lakh, which is below the rupee limit (whether the older ₹5 lakh or the ₹2 crore after the 2025 amendment).",
+          "Aggregate ₹1.80 lakh + ₹1.50 lakh = ₹3.30 lakh > ₹3.00 lakh → substantial interest; loan to Orchid Foods is barred by s.20."
+        ],
+        "formula_used": "Substantial interest: holding > lower of (rupee limit, 10% of paid-up)",
+        "trap": "Spouse and minor children are aggregated."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.5(ne) (rupee limb amended by Banking Laws (Amendment) Act 2025 — key unaffected), s.20 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "No; the holding is below the fixed rupee limb of the definition",
+          "is_correct": false,
+          "error": "treats the rupee limb as the only test instead of the lower of the two",
+          "label": "A"
+        },
+        {
+          "text": "No; substantial interest applies only to listed companies",
+          "is_correct": false,
+          "error": "invents a listed-company restriction",
+          "label": "B"
+        },
+        {
+          "text": "Yes; the family's ₹3.30 lakh exceeds 10% of paid-up capital (₹3.00 lakh)",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "No; her own ₹1.80 lakh is only 6% of paid-up capital",
+          "is_correct": false,
+          "error": "ignores aggregation with spouse's holding",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-037",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-loans-to-directors-and-restrictions-on-shareholding-8b0bb121",
+      "microtopic_name": "BR Act — Loans to directors and restrictions on shareholding",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Coromandel Bank Ltd has paid-up capital ₹1,200 crore and reserves ₹8,800 crore. It already holds, as pledgee, shares of Zenith Ltd with paid-up value ₹420 crore; Zenith's paid-up capital is ₹2,000 crore. The further shares of Zenith it may hold (as pledgee, mortgagee or owner) within s.19(2) are:",
+      "explanation": {
+        "steps": [
+          "Limit = lower of 30% of Zenith's paid-up (₹600 crore) and 30% of the bank's paid-up + reserves (₹3,000 crore) = ₹600 crore.",
+          "Headroom = ₹600 crore − ₹420 crore = ₹180 crore. Pledged shares count."
+        ],
+        "formula_used": "Holding ≤ min(30% × investee paid-up, 30% × own paid-up + reserves)",
+        "trap": "Whichever is less; pledged shares count."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.19(2) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹600 crore",
+          "is_correct": false,
+          "error": "ignores shares already held as pledgee",
+          "label": "A"
+        },
+        {
+          "text": "₹180 crore",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "Nil, as the existing holding already exceeds the limit",
+          "is_correct": false,
+          "error": "measures 30% against the bank's paid-up capital alone (₹360 crore)",
+          "label": "C"
+        },
+        {
+          "text": "₹2,580 crore",
+          "is_correct": false,
+          "error": "uses the higher of the two limits",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-038",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-licensing-and-statutory-liquidity-ratio-e36b281f",
+      "microtopic_name": "BR Act — Licensing and statutory liquidity ratio",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "RBI cancels the banking licence of Sunrise Bank Ltd under s.22(4). The bank may appeal against the cancellation to:",
+      "explanation": {
+        "steps": [
+          "s.22(5): a banking company aggrieved by cancellation of its licence may appeal to the Central Government within 30 days from the date of communication of the decision.",
+          "The Central Government's decision is final."
+        ],
+        "formula_used": "BR Act s.22(5)",
+        "trap": "Appeal lies to the Central Government, not a tribunal."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.22(5) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "The National Company Law Appellate Tribunal, within 45 days",
+          "is_correct": false,
+          "error": "wrong forum; NCLAT has no role under s.22",
+          "label": "A"
+        },
+        {
+          "text": "The Central Government, within 30 days of the decision",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "The Securities Appellate Tribunal, within 45 days",
+          "is_correct": false,
+          "error": "confuses with appeals against SEBI orders",
+          "label": "C"
+        },
+        {
+          "text": "The Central Government, within 60 days of the decision",
+          "is_correct": false,
+          "error": "wrong time limit",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-039",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-licensing-and-statutory-liquidity-ratio-e36b281f",
+      "microtopic_name": "BR Act — Licensing and statutory liquidity ratio",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Krishna Bank Ltd fell short of its SLR requirement on three consecutive days by ₹50 crore, ₹80 crore and ₹30 crore; it was compliant on the days before and after. Bank Rate is 6.75%. Penal interest payable under s.24 (365-day year) is closest to:",
+      "explanation": {
+        "steps": [
+          "Day 1 (first day of default): Bank Rate + 3% = 9.75% on ₹50 crore.",
+          "Days 2–3 (continuing default): Bank Rate + 5% = 11.75% on ₹80 crore and ₹30 crore.",
+          "Penal = [50×9.75% + (80+30)×11.75%] crore ÷ 365 = ₹4,87,671"
+        ],
+        "formula_used": "Penal = Shortfall × (Bank Rate + 3% first day / 5% succeeding days) ÷ 365",
+        "trap": "The 5% rate applies from the next succeeding day."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.24(4) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹1,91,781",
+          "is_correct": false,
+          "error": "applies 3%/5% flat without adding the Bank Rate",
+          "label": "A"
+        },
+        {
+          "text": "₹4,27,397",
+          "is_correct": false,
+          "error": "charges Bank Rate + 3% on all three days",
+          "label": "B"
+        },
+        {
+          "text": "₹4,43,836",
+          "is_correct": false,
+          "error": "starts the Bank Rate + 5% rate only from the third day",
+          "label": "C"
+        },
+        {
+          "text": "₹4,87,671",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTB-040",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-licensing-and-statutory-liquidity-ratio-e36b281f",
+      "microtopic_name": "BR Act — Licensing and statutory liquidity ratio",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Which statement correctly describes RBI's power over the statutory liquidity ratio under s.24 of the BR Act as it now stands?",
+      "explanation": {
+        "steps": [
+          "s.24(2A): assets in cash, gold or unencumbered approved securities at a percentage not exceeding 40% of NDTL as RBI specifies.",
+          "The Banking Regulation (Amendment) Act, 2007 removed the 25% floor."
+        ],
+        "formula_used": "BR Act s.24(2A)",
+        "trap": "Only the 40% ceiling survives."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.24(2A), BR (Amendment) Act 2007 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "The Central Government fixes SLR; RBI only monitors it",
+          "is_correct": false,
+          "error": "wrong authority",
+          "label": "A"
+        },
+        {
+          "text": "RBI may specify SLR up to 40% of NDTL, with no floor",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "RBI must keep SLR between 25% and 40% of NDTL",
+          "is_correct": false,
+          "error": "the 25% floor was removed by the 2007 amendment",
+          "label": "C"
+        },
+        {
+          "text": "RBI may specify SLR up to 20% of NDTL",
+          "is_correct": false,
+          "error": "confuses with the old CRR ceiling under s.42",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-041",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-rbi-directions-removal-and-supersession-powers-5f4990b9",
+      "microtopic_name": "BR Act — RBI directions, removal and supersession powers",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Which of the following is NOT a ground on which RBI may issue directions to banking companies under s.35A of the BR Act?",
+      "explanation": {
+        "steps": [
+          "s.35A(1): directions in the public interest, in the interest of banking policy, to prevent affairs being conducted detrimentally to depositors or the bank, or to secure proper management."
+        ],
+        "formula_used": "BR Act s.35A(1)",
+        "trap": "Shareholder returns are not a statutory ground."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.35A — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Maximising the dividend paid to the bank's shareholders",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Securing the proper management of any banking company",
+          "is_correct": false,
+          "error": "listed ground",
+          "label": "B"
+        },
+        {
+          "text": "Public interest",
+          "is_correct": false,
+          "error": "listed ground",
+          "label": "C"
+        },
+        {
+          "text": "Preventing affairs being conducted detrimentally to depositors",
+          "is_correct": false,
+          "error": "listed ground",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-042",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-rbi-directions-removal-and-supersession-powers-5f4990b9",
+      "microtopic_name": "BR Act — RBI directions, removal and supersession powers",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "The articles of Pennar Bank Ltd fix the maximum board strength at 12; the board presently has 9 directors. The maximum number of additional directors RBI may appoint under s.36AB is:",
+      "explanation": {
+        "steps": [
+          "s.36AB: RBI may appoint additional directors not exceeding five or one-third of the maximum strength fixed by the articles, whichever is less.",
+          "min(5, 12/3 = 4) = 4."
+        ],
+        "formula_used": "Additional directors ≤ min(5, ⅓ × maximum strength)",
+        "trap": "Maximum strength under the articles, not current strength."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.36AB — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "3",
+          "is_correct": false,
+          "error": "computes one-third of present strength instead of maximum strength",
+          "label": "A"
+        },
+        {
+          "text": "5",
+          "is_correct": false,
+          "error": "applies the absolute cap of five, ignoring 'whichever is less'",
+          "label": "B"
+        },
+        {
+          "text": "4",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "6",
+          "is_correct": false,
+          "error": "takes one-half of maximum strength",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-043",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-rbi-directions-removal-and-supersession-powers-5f4990b9",
+      "microtopic_name": "BR Act — RBI directions, removal and supersession powers",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A banking company commits a contravention under s.46(4) of the BR Act involving a quantifiable amount of ₹72 lakh. The contravention continues for 18 days in all. The maximum penalty RBI may impose under s.47A is:",
+      "explanation": {
+        "steps": [
+          "s.47A(1)(b): up to ₹1 crore or twice the amount involved (if quantifiable), whichever is more.",
+          "max(₹1 crore, 2 × ₹72 lakh = ₹1.44 crore) = ₹1.44 crore.",
+          "Continuing default: up to ₹1 lakh per day after the first → 17 × ₹1 lakh = ₹17 lakh.",
+          "Maximum = ₹1.61 crore."
+        ],
+        "formula_used": "Penalty = max(₹1 cr, 2 × amount) + ₹1 lakh × (days − 1)",
+        "trap": "'Whichever is more', and the daily add-on runs after the first day."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.47A(1)(b) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹1.17 crore",
+          "is_correct": false,
+          "error": "takes the lower of ₹1 crore and twice the amount",
+          "label": "A"
+        },
+        {
+          "text": "₹1.61 crore",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹1.44 crore",
+          "is_correct": false,
+          "error": "omits the continuing-default penalty",
+          "label": "C"
+        },
+        {
+          "text": "₹1.62 crore",
+          "is_correct": false,
+          "error": "charges the daily penalty for the first day as well",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-044",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-moratorium-amalgamation-and-co-operative-banks-d92f4bf2",
+      "microtopic_name": "BR Act — Moratorium, amalgamation and co-operative banks",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "At the meeting of shareholders of Tapti Bank Ltd on a voluntary amalgamation scheme under s.44A, 120 shareholders holding 90,00,000 shares are present in person or by proxy. 70 shareholders holding 58,00,000 shares vote in favour. The scheme:",
+      "explanation": {
+        "steps": [
+          "s.44A(2): approval needs a majority in number representing two-thirds in value of shareholders present and voting.",
+          "Number: 70 of 120 → majority ✓.",
+          "Value: 58,00,000 ÷ 90,00,000 = 64.4% < 66.67% ✗ → resolution fails."
+        ],
+        "formula_used": "Majority in number AND ⅔ in value of those present",
+        "trap": "Both limbs; the value limb is ⅔, not ½."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.44A(2) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Fails, as a majority in number of all shareholders is not present",
+          "is_correct": false,
+          "error": "invents a majority-of-all-members quorum",
+          "label": "A"
+        },
+        {
+          "text": "Fails, as 58 lakh shares are below two-thirds of shares present",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "Passes, as more than half of the shares present are in favour",
+          "is_correct": false,
+          "error": "applies simple majority by value",
+          "label": "C"
+        },
+        {
+          "text": "Passes, as a majority in number of those present is in favour",
+          "is_correct": false,
+          "error": "applies only the majority-in-number limb",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-045",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-moratorium-amalgamation-and-co-operative-banks-d92f4bf2",
+      "microtopic_name": "BR Act — Moratorium, amalgamation and co-operative banks",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements on co-operative banks and the BR Act, 1949 (as amended in 2020):\n\n1. The Act does not apply to a primary agricultural credit society.\n2. RBI may supersede the board of a co-operative bank, after consultation with the concerned State Government.\n3. A co-operative bank requires a licence from RBI under s.22, as applied to co-operative societies by s.56.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "1: Correct — s.3.",
+          "2: Correct — s.36ACA as applied through s.56 after the BR (Amendment) Act, 2020.",
+          "3: Correct — s.22 applies to co-operative banks through Part V (s.56)."
+        ],
+        "formula_used": "BR Act ss.3, 22, 36ACA, 56",
+        "trap": "Co-operative banks are within RBI's banking regulation (Part V), barring PACS."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, ss.3, 22, 36ACA, 56; BR (Amendment) Act 2020 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "1 and 3 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 2: RBI may supersede a co-operative bank's board in consultation with the State Government (2020 amendment)",
+          "label": "A"
+        },
+        {
+          "text": "1 and 2 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 3: s.22 as applied by s.56 requires co-operative banks to hold an RBI licence",
+          "label": "B"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "2 and 3 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 1: s.3 excludes primary agricultural credit societies",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-046",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-rbi-directions-removal-and-supersession-powers-5f4990b9",
+      "microtopic_name": "BR Act — RBI directions, removal and supersession powers",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "BR-KONARK",
+      "stem": "**Case — Konark Bank Ltd.** An RBI inspection of Konark Bank Ltd, a private sector bank, reveals large undisclosed NPAs, governance lapses and a sharp deposit run. RBI wants to (i) immediately restrict withdrawals, (ii) replace the management, and (iii) resolve the bank through amalgamation with a stronger bank. On 1 April 2026 RBI superseded the board for six months, and later extended the supersession by four months. Separately, on RBI's application, the Central Government ordered a moratorium for three months from 5 March 2026.\n\n**Q1.** The provision RBI would use to immediately cap withdrawals at a fixed amount per depositor is:",
+      "explanation": {
+        "steps": [
+          "s.35A lets RBI issue directions, including restricting acceptance of deposits and withdrawals, to protect depositors.",
+          "s.45 moratorium is a Central Government order; s.36ACA addresses management."
+        ],
+        "formula_used": "BR Act s.35A",
+        "trap": "RBI cannot itself impose a s.45 moratorium."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, ss.35A, 45 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Section 35A — directions to a banking company",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Section 22(4) — cancellation of licence",
+          "is_correct": false,
+          "error": "cancellation ends banking business rather than capping withdrawals",
+          "label": "B"
+        },
+        {
+          "text": "Section 45 — moratorium, which RBI orders itself",
+          "is_correct": false,
+          "error": "the moratorium is ordered by the Central Government on RBI's application",
+          "label": "C"
+        },
+        {
+          "text": "Section 36ACA — supersession of the board",
+          "is_correct": false,
+          "error": "supersession changes management, not withdrawals",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-047",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-rbi-directions-removal-and-supersession-powers-5f4990b9",
+      "microtopic_name": "BR Act — RBI directions, removal and supersession powers",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "BR-KONARK",
+      "stem": "**Case — Konark Bank Ltd.** An RBI inspection of Konark Bank Ltd, a private sector bank, reveals large undisclosed NPAs, governance lapses and a sharp deposit run. RBI wants to (i) immediately restrict withdrawals, (ii) replace the management, and (iii) resolve the bank through amalgamation with a stronger bank. On 1 April 2026 RBI superseded the board for six months, and later extended the supersession by four months. Separately, on RBI's application, the Central Government ordered a moratorium for three months from 5 March 2026.\n\n**Q2.** The maximum further period for which the supersession may be extended is:",
+      "explanation": {
+        "steps": [
+          "s.36ACA: RBI, in consultation with the Central Government, may supersede the board for up to 12 months; extensions are allowed but the aggregate cannot exceed 12 months.",
+          "Used = 6 + 4 = 10 months → further extension ≤ 2 months."
+        ],
+        "formula_used": "Aggregate supersession ≤ 12 months",
+        "trap": "The 12-month cap is cumulative."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.36ACA — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "14 months",
+          "is_correct": false,
+          "error": "assumes a 24-month aggregate limit",
+          "label": "A"
+        },
+        {
+          "text": "Nil — the first period can never be extended",
+          "is_correct": false,
+          "error": "denies the power to extend within the aggregate",
+          "label": "B"
+        },
+        {
+          "text": "6 months",
+          "is_correct": false,
+          "error": "assumes each extension may itself run six months, with no aggregate cap",
+          "label": "C"
+        },
+        {
+          "text": "2 months",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTB-048",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-moratorium-amalgamation-and-co-operative-banks-d92f4bf2",
+      "microtopic_name": "BR Act — Moratorium, amalgamation and co-operative banks",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "BR-KONARK",
+      "stem": "**Case — Konark Bank Ltd.** An RBI inspection of Konark Bank Ltd, a private sector bank, reveals large undisclosed NPAs, governance lapses and a sharp deposit run. RBI wants to (i) immediately restrict withdrawals, (ii) replace the management, and (iii) resolve the bank through amalgamation with a stronger bank. On 1 April 2026 RBI superseded the board for six months, and later extended the supersession by four months. Separately, on RBI's application, the Central Government ordered a moratorium for three months from 5 March 2026.\n\n**Q3.** The moratorium may be extended by the Central Government by at most:",
+      "explanation": {
+        "steps": [
+          "s.45(2): the Central Government may order a moratorium on RBI's application; it may be extended from time to time, but the total period cannot exceed six months.",
+          "Used 3 months → 3 more months at most."
+        ],
+        "formula_used": "Moratorium ≤ 6 months in aggregate",
+        "trap": "Six months for moratorium; twelve for supersession."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.45(2) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "3 more months, but only with Parliament's approval",
+          "is_correct": false,
+          "error": "invents parliamentary approval",
+          "label": "A"
+        },
+        {
+          "text": "9 more months, as the total cannot exceed twelve months",
+          "is_correct": false,
+          "error": "confuses with the 12-month supersession cap",
+          "label": "B"
+        },
+        {
+          "text": "No extension; a moratorium order cannot be extended at all",
+          "is_correct": false,
+          "error": "denies extension within the aggregate limit",
+          "label": "C"
+        },
+        {
+          "text": "3 more months, as the total cannot exceed six months",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTB-049",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-moratorium-amalgamation-and-co-operative-banks-d92f4bf2",
+      "microtopic_name": "BR Act — Moratorium, amalgamation and co-operative banks",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "BR-KONARK",
+      "stem": "**Case — Konark Bank Ltd.** An RBI inspection of Konark Bank Ltd, a private sector bank, reveals large undisclosed NPAs, governance lapses and a sharp deposit run. RBI wants to (i) immediately restrict withdrawals, (ii) replace the management, and (iii) resolve the bank through amalgamation with a stronger bank. On 1 April 2026 RBI superseded the board for six months, and later extended the supersession by four months. Separately, on RBI's application, the Central Government ordered a moratorium for three months from 5 March 2026.\n\n**Q4.** A compulsory scheme of amalgamation of Konark Bank prepared by RBI under s.45 comes into force when:",
+      "explanation": {
+        "steps": [
+          "s.45: RBI prepares the scheme (during the moratorium or otherwise), invites suggestions, and forwards it to the Central Government.",
+          "The Central Government sanctions it, with or without modifications; shareholder approval and NCLT sanction are not needed."
+        ],
+        "formula_used": "BR Act s.45(4)–(7)",
+        "trap": "s.44A voluntary: RBI sanctions; s.45 compulsory: Central Government sanctions."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, ss.44A, 45 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "RBI itself sanctions the scheme it has prepared",
+          "is_correct": false,
+          "error": "confuses with the s.44A voluntary route, where RBI sanctions",
+          "label": "A"
+        },
+        {
+          "text": "The Central Government sanctions the scheme",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "The NCLT sanctions it after creditor meetings",
+          "is_correct": false,
+          "error": "applies the Companies Act merger route",
+          "label": "C"
+        },
+        {
+          "text": "Two-thirds in value of shareholders approve it",
+          "is_correct": false,
+          "error": "applies the s.44A shareholder approval",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-050",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-br-act-rbi-directions-removal-and-supersession-powers-5f4990b9",
+      "microtopic_name": "BR Act — RBI directions, removal and supersession powers",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "BR-KONARK",
+      "stem": "**Case — Konark Bank Ltd.** An RBI inspection of Konark Bank Ltd, a private sector bank, reveals large undisclosed NPAs, governance lapses and a sharp deposit run. RBI wants to (i) immediately restrict withdrawals, (ii) replace the management, and (iii) resolve the bank through amalgamation with a stronger bank. On 1 April 2026 RBI superseded the board for six months, and later extended the supersession by four months. Separately, on RBI's application, the Central Government ordered a moratorium for three months from 5 March 2026.\n\n**Q5.** RBI removes Konark's managing director and CEO under s.36AA. His statutory remedy is:",
+      "explanation": {
+        "steps": [
+          "s.36AA(3): a person removed may appeal to the Central Government within 30 days of the communication of the order; its decision is final."
+        ],
+        "formula_used": "BR Act s.36AA",
+        "trap": "Same 30-day Central Government appeal pattern as s.22(5)."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Banking Regulation Act, 1949, s.36AA — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Appeal to the Central Government within 30 days of the order",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Petition to the NCLT for oppression and mismanagement",
+          "is_correct": false,
+          "error": "company-law remedy, not the s.36AA appeal",
+          "label": "B"
+        },
+        {
+          "text": "Appeal to the Securities Appellate Tribunal within 45 days",
+          "is_correct": false,
+          "error": "wrong forum",
+          "label": "C"
+        },
+        {
+          "text": "Appeal to the RBI Central Board within 60 days",
+          "is_correct": false,
+          "error": "wrong forum and time limit",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-051",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-deposit-insurance-cover-computation-a9b7942a",
+      "microtopic_name": "DICGC Act — Deposit insurance cover computation",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Deposit insurance by DICGC for a depositor of an insured bank currently covers:",
+      "explanation": {
+        "steps": [
+          "The limit was raised from ₹1 lakh to ₹5 lakh with effect from 4 February 2020.",
+          "It covers principal and interest together, per depositor per bank, in the same right and capacity."
+        ],
+        "formula_used": "Cover = min(principal + interest, ₹5 lakh) per bank per capacity",
+        "trap": "Interest sits inside the cap."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, s.16(1) and DICGC notification (₹5 lakh from 4 Feb 2020) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Principal only up to ₹5 lakh, with interest paid over and above",
+          "is_correct": false,
+          "error": "treats interest as outside the ₹5 lakh cap",
+          "label": "A"
+        },
+        {
+          "text": "Principal and interest up to ₹1 lakh per depositor per bank",
+          "is_correct": false,
+          "error": "the limit before 4 February 2020",
+          "label": "B"
+        },
+        {
+          "text": "Principal and interest up to ₹5 lakh per depositor across all banks",
+          "is_correct": false,
+          "error": "aggregates across banks instead of per bank",
+          "label": "C"
+        },
+        {
+          "text": "Principal and interest up to ₹5 lakh per depositor per bank, same capacity",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTB-052",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-insured-banks-and-excluded-deposits-0f63be67",
+      "microtopic_name": "DICGC Act — Insured banks and excluded deposits",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Which of the following is NOT covered by DICGC deposit insurance?",
+      "explanation": {
+        "steps": [
+          "All commercial banks (including RRBs, LABs, and branches of foreign banks in India) and eligible co-operative banks are insured.",
+          "Primary agricultural credit societies are not insured banks."
+        ],
+        "formula_used": "DICGC Act s.2(gg), Chapter III",
+        "trap": "PACS are outside both the BR Act (s.3) and deposit insurance."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, ss.2(gg), 13A — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "A local area bank licensed by RBI",
+          "is_correct": false,
+          "error": "LABs are insured banks",
+          "label": "A"
+        },
+        {
+          "text": "A regional rural bank in Odisha",
+          "is_correct": false,
+          "error": "RRBs are insured banks",
+          "label": "B"
+        },
+        {
+          "text": "A primary agricultural society",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "An urban co-operative bank",
+          "is_correct": false,
+          "error": "eligible co-operative banks are insured",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-053",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-insured-banks-and-excluded-deposits-0f63be67",
+      "microtopic_name": "DICGC Act — Insured banks and excluded deposits",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "case",
+      "stimulus_group": null,
+      "stem": "In a failed insured commercial bank, which of the following deposits qualifies for DICGC insurance?",
+      "explanation": {
+        "steps": [
+          "s.2(g) excludes deposits of foreign Governments, Central/State Governments, other banks, and amounts received outside India.",
+          "An NRI's deposit received in India is not excluded."
+        ],
+        "formula_used": "DICGC Act s.2(g)",
+        "trap": "Residence of the depositor does not matter; place of receipt does."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, s.2(g) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "Deposit of a foreign Government's embassy",
+          "is_correct": false,
+          "error": "foreign Government deposits are excluded",
+          "label": "A"
+        },
+        {
+          "text": "NRI's savings deposit held at a Delhi branch",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "Deposit of a State Government department",
+          "is_correct": false,
+          "error": "State Government deposits are excluded",
+          "label": "C"
+        },
+        {
+          "text": "Term deposit placed by another bank",
+          "is_correct": false,
+          "error": "inter-bank deposits are excluded",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-054",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-insured-banks-and-excluded-deposits-0f63be67",
+      "microtopic_name": "DICGC Act — Insured banks and excluded deposits",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements on deposit insurance coverage:\n\n1. Regional rural banks and local area banks are insured banks.\n2. Deposits with branches in India of a bank incorporated abroad are insured.\n3. Deposits received at the London branch of an Indian public sector bank are insured.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "1: Correct.",
+          "2: Correct — foreign banks' Indian branches are insured.",
+          "3: Incorrect — amounts due on deposits received outside India are excluded."
+        ],
+        "formula_used": "DICGC Act s.2(g)",
+        "trap": "Ownership of the bank is irrelevant; place of receipt is decisive."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, s.2(g) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "1 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 2: foreign bank branches in India are insured",
+          "label": "A"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "wrongly accepts statement 3: deposits received outside India are excluded by s.2(g)",
+          "label": "B"
+        },
+        {
+          "text": "2 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 1: RRBs and LABs are insured",
+          "label": "C"
+        },
+        {
+          "text": "1 and 2 only",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTB-055",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-deposit-insurance-cover-computation-a9b7942a",
+      "microtopic_name": "DICGC Act — Deposit insurance cover computation",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Mr Joshi, in his individual capacity, holds at Laxmi Bank a savings account of ₹3.40 lakh at its Pune branch, a fixed deposit of ₹1.70 lakh at its Nashik branch and a recurring deposit of ₹1.90 lakh at its Pune branch (all inclusive of interest). If the bank is liquidated, DICGC's liability to him is:",
+      "explanation": {
+        "steps": [
+          "Same bank, same capacity → aggregate across branches: ₹3.40 lakh + ₹1.70 lakh + ₹1.90 lakh = ₹7.00 lakh.",
+          "Cover = min(₹7.00 lakh, ₹5 lakh) = ₹5.00 lakh."
+        ],
+        "formula_used": "Cover = min(Σ same-capacity balances in the bank, ₹5 lakh)",
+        "trap": "Branches are not separate banks."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, s.16(1) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹6.70 lakh",
+          "is_correct": false,
+          "error": "caps separately branch by branch",
+          "label": "A"
+        },
+        {
+          "text": "₹3.40 lakh",
+          "is_correct": false,
+          "error": "covers only the single largest account",
+          "label": "B"
+        },
+        {
+          "text": "₹7.00 lakh",
+          "is_correct": false,
+          "error": "no cap applied to the aggregated balance",
+          "label": "C"
+        },
+        {
+          "text": "₹5.00 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTB-056",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-deposit-insurance-cover-computation-a9b7942a",
+      "microtopic_name": "DICGC Act — Deposit insurance cover computation",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Pradeep already has an individual fixed deposit at Shreyas Bank. Match each additional deposit with its treatment for the ₹5 lakh cover:\n\n| Deposit | Treatment |\n|---|---|\n| P. Savings a/c at Shreyas Bank in his sole name | 1. Separate bank; separate ₹5 lakh cover |\n| Q. Joint FD at Shreyas Bank with his wife | 2. Aggregated with his existing individual FD |\n| R. FD at Unnati Bank in his sole name | 3. Held as guardian of a minor; separate capacity |\n| S. FD at Shreyas Bank for his minor son | 4. Different right and capacity (joint holding); separate cover |",
+      "explanation": {
+        "steps": [
+          "Same bank, same capacity → aggregated (P).",
+          "Joint account is a different capacity → separate (Q).",
+          "Different insured bank → separate (R).",
+          "Deposit held as guardian for a minor → separate capacity (S)."
+        ],
+        "formula_used": "Aggregate only within the same bank and the same right and capacity",
+        "trap": "Different bank or different capacity → separate cover."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, s.16(1); DICGC 'same right and capacity' rule — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "P-2, Q-4, R-2, S-3",
+          "is_correct": false,
+          "error": "aggregates deposits across two different banks",
+          "label": "A"
+        },
+        {
+          "text": "P-2, Q-4, R-1, S-3",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "P-1, Q-4, R-2, S-3",
+          "is_correct": false,
+          "error": "treats an account at another branch/type as a separate bank and aggregates across banks",
+          "label": "C"
+        },
+        {
+          "text": "P-2, Q-2, R-1, S-3",
+          "is_correct": false,
+          "error": "aggregates the joint FD with his individual deposits",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-057",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-deposit-insurance-cover-computation-a9b7942a",
+      "microtopic_name": "DICGC Act — Deposit insurance cover computation",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Mrs Dsouza holds a fixed deposit of ₹4.85 lakh with accrued interest of ₹0.30 lakh at Pragati Bank, and a savings balance of ₹3.60 lakh at Samruddhi Bank, both in her sole name. Both banks are liquidated. Her total insured claim on DICGC is:",
+      "explanation": {
+        "steps": [
+          "Pragati: min(₹4.85 lakh + ₹0.30 lakh = ₹5.15 lakh, ₹5 lakh) = ₹5.00 lakh.",
+          "Samruddhi: ₹3.60 lakh (below cap).",
+          "Total = ₹8.60 lakh."
+        ],
+        "formula_used": "Σ over banks of min(principal + interest, ₹5 lakh)",
+        "trap": "The cap is per bank; interest counts towards it."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, s.16(1) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹8.45 lakh",
+          "is_correct": false,
+          "error": "excludes interest from cover",
+          "label": "A"
+        },
+        {
+          "text": "₹8.75 lakh",
+          "is_correct": false,
+          "error": "does not cap the Pragati Bank balance",
+          "label": "B"
+        },
+        {
+          "text": "₹5.00 lakh",
+          "is_correct": false,
+          "error": "applies one ₹5 lakh cap across both banks",
+          "label": "C"
+        },
+        {
+          "text": "₹8.60 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTB-058",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-deposit-insurance-cover-computation-a9b7942a",
+      "microtopic_name": "DICGC Act — Deposit insurance cover computation",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Under an RBI-sanctioned scheme of amalgamation, depositors of a weak insured bank receive 40% of their balances from the transferee bank. A depositor had ₹8 lakh (principal plus interest). DICGC's liability to her is:",
+      "explanation": {
+        "steps": [
+          "Received under scheme = 40% × ₹8 lakh = ₹3.20 lakh.",
+          "s.16(2): DICGC pays the lower of (original deposit − amount received) and (insured limit − amount received).",
+          "= min(₹4.80 lakh, ₹1.80 lakh) = ₹1.80 lakh."
+        ],
+        "formula_used": "Payment = min(Deposit, ₹5 lakh) − Amount received under scheme",
+        "trap": "The insured limit caps what the depositor ends up with."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, s.16(2) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹4.80 lakh",
+          "is_correct": false,
+          "error": "pays the full shortfall without the insured-limit cap",
+          "label": "A"
+        },
+        {
+          "text": "₹3.00 lakh",
+          "is_correct": false,
+          "error": "applies the 60% shortfall to the ₹5 lakh limit",
+          "label": "B"
+        },
+        {
+          "text": "₹1.80 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹5.00 lakh",
+          "is_correct": false,
+          "error": "ignores the amount received under the scheme",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-059",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-deposit-insurance-cover-computation-a9b7942a",
+      "microtopic_name": "DICGC Act — Deposit insurance cover computation",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "assertion-reason",
+      "stimulus_group": null,
+      "stem": "**Assertion (A):** When an insured bank is amalgamated under a scheme and a depositor receives less than the insured limit, DICGC makes good the shortfall up to that limit.\n\n**Reason (R):** DICGC's liability to depositors arises only when an insured bank is wound up.",
+      "explanation": {
+        "steps": [
+          "A is true — s.16(2) covers schemes of compromise, arrangement, reconstruction or amalgamation.",
+          "R is false — liability also arises under s.16(2) and, since 2021, under s.18A when RBI restricts withdrawals."
+        ],
+        "formula_used": "DICGC Act ss.16(1), 16(2), 18A",
+        "trap": "Liquidation is only one of three triggers."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, ss.16, 18A — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "A is true, but R is false",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Both A and R are true, and R is the correct explanation of A",
+          "is_correct": false,
+          "error": "accepts R, which is false: liability also arises on amalgamation/reconstruction and on RBI restrictions",
+          "label": "B"
+        },
+        {
+          "text": "A is false, but R is true",
+          "is_correct": false,
+          "error": "rejects A, which s.16(2) supports",
+          "label": "C"
+        },
+        {
+          "text": "Both A and R are true, but R is not the correct explanation of A",
+          "is_correct": false,
+          "error": "accepts R, which is false",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-060",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-deposit-insurance-cover-computation-a9b7942a",
+      "microtopic_name": "DICGC Act — Deposit insurance cover computation",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "At a liquidated insured bank, Nova Tools Pvt Ltd has a current account balance of ₹20 lakh and its managing director Mr Iyer has an individual savings balance of ₹3 lakh (both inclusive of interest). DICGC's total liability for these two accounts is:",
+      "explanation": {
+        "steps": [
+          "Every depositor — individual, firm or company — is insured up to ₹5 lakh per bank; a company is a separate depositor from its directors.",
+          "Company: min(₹20 lakh, ₹5 lakh) = ₹5.00 lakh; Mr Iyer: ₹3.00 lakh.",
+          "Total = ₹8.00 lakh."
+        ],
+        "formula_used": "Σ per depositor of min(balance, ₹5 lakh)",
+        "trap": "Corporate deposits are insured, and separately from directors'."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, s.16(1) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹8.00 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹23.00 lakh",
+          "is_correct": false,
+          "error": "applies no cap to either account",
+          "label": "B"
+        },
+        {
+          "text": "₹5.00 lakh",
+          "is_correct": false,
+          "error": "treats the company and its director as one depositor",
+          "label": "C"
+        },
+        {
+          "text": "₹3.00 lakh",
+          "is_correct": false,
+          "error": "assumes deposits of companies are not insured",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-061",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-premium-payable-by-insured-banks-089b7f66",
+      "microtopic_name": "DICGC Act — Premium payable by insured banks",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "An insured bank's assessable deposits at the end of the previous half-year were ₹860 crore. Premium is 12 paise per ₹100 of assessable deposits per annum, payable half-yearly (given). The premium for the half-year is:",
+      "explanation": {
+        "steps": [
+          "Annual rate = 12/10,000 = 0.12% of assessable deposits.",
+          "Half-year premium = ₹860 crore × 0.12% ÷ 2 = ₹51.60 lakh."
+        ],
+        "formula_used": "Premium = Assessable deposits × rate × ½",
+        "trap": "Rate is per annum; the instalment is half-yearly."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, s.15 (premium rate given in stem) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹103.20 lakh",
+          "is_correct": false,
+          "error": "charges the full annual rate for a half-year",
+          "label": "A"
+        },
+        {
+          "text": "₹5.16 lakh",
+          "is_correct": false,
+          "error": "reads 12 paise per ₹100 as 12 paise per ₹1,000",
+          "label": "B"
+        },
+        {
+          "text": "₹25.80 lakh",
+          "is_correct": false,
+          "error": "treats the premium as payable quarterly",
+          "label": "C"
+        },
+        {
+          "text": "₹51.60 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTB-062",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-premium-payable-by-insured-banks-089b7f66",
+      "microtopic_name": "DICGC Act — Premium payable by insured banks",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Details of Surya Bank Ltd at the end of the previous half-year (₹ crore): total deposits 2,400, of which State Government deposits 150, deposits of other banks 90 and a foreign Government's deposit 10. The insured portion (balances up to ₹5 lakh per depositor) is 1,100. At 12 paise per ₹100 per annum (given), the half-yearly premium is:",
+      "explanation": {
+        "steps": [
+          "Assessable deposits = 2,400 − 150 − 90 − 10 = 2,150 crore.",
+          "Half-year premium = 2,150 crore × 0.12% ÷ 2 = ₹129.00 lakh."
+        ],
+        "formula_used": "Premium = (Total − excluded deposits) × rate × ½",
+        "trap": "Premium is on assessable deposits, not just the insured slice."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, ss.2(g), 15 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹258.00 lakh",
+          "is_correct": false,
+          "error": "charges the annual rate for a half-year",
+          "label": "A"
+        },
+        {
+          "text": "₹129.00 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹144.00 lakh",
+          "is_correct": false,
+          "error": "computes premium on total deposits without exclusions",
+          "label": "C"
+        },
+        {
+          "text": "₹66.00 lakh",
+          "is_correct": false,
+          "error": "computes premium only on the insured portion",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-063",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-premium-payable-by-insured-banks-089b7f66",
+      "microtopic_name": "DICGC Act — Premium payable by insured banks",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "The deposit insurance premium payable to DICGC is borne by:",
+      "explanation": {
+        "steps": [
+          "The insured bank pays the premium half-yearly on its assessable deposits and bears it itself; it is not charged to depositors."
+        ],
+        "formula_used": "DICGC Act s.15",
+        "trap": "Ownership of DICGC by RBI does not shift the premium burden."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, s.15 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "The insured bank, which cannot recover it from depositors",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "The Central Government, through budgetary support",
+          "is_correct": false,
+          "error": "invented Government funding",
+          "label": "B"
+        },
+        {
+          "text": "Depositors, through a deduction from interest credited",
+          "is_correct": false,
+          "error": "assumes the cost is passed on to depositors",
+          "label": "C"
+        },
+        {
+          "text": "RBI, as the sole owner of DICGC",
+          "is_correct": false,
+          "error": "confuses ownership with premium liability",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-064",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-payment-timelines-and-the-2021-amendment-5de0e63b",
+      "microtopic_name": "DICGC Act — Payment timelines and the 2021 amendment",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "After the DICGC (Amendment) Act, 2021, depositors of an insured bank placed under RBI directions restricting withdrawals receive insured amounts within:",
+      "explanation": {
+        "steps": [
+          "s.18A (2021): 45 days for the bank to submit depositor details, 30 days for DICGC verification, payment in the next 15 days — 90 days in all."
+        ],
+        "formula_used": "45 + 30 + 15 = 90 days",
+        "trap": "90 days is the whole cycle."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, s.18A (DICGC (Amendment) Act 2021) — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "180 days of the directions being imposed",
+          "is_correct": false,
+          "error": "invented longer timeline",
+          "label": "A"
+        },
+        {
+          "text": "Two months of the liquidator submitting the claim list",
+          "is_correct": false,
+          "error": "the liquidation-route timeline",
+          "label": "B"
+        },
+        {
+          "text": "45 days of the directions being imposed",
+          "is_correct": false,
+          "error": "the 45-day step is only the bank's submission of depositor details",
+          "label": "C"
+        },
+        {
+          "text": "90 days of the directions being imposed",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "ACTB-065",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-payment-timelines-and-the-2021-amendment-5de0e63b",
+      "microtopic_name": "DICGC Act — Payment timelines and the 2021 amendment",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A liquidator assumes charge of a failed insured bank on 10 February 2026 and sends the depositor claim list to DICGC on 2 May 2026. The statutory deadlines for the list and for DICGC's payment are respectively:",
+      "explanation": {
+        "steps": [
+          "Liquidator: list within 3 months of assuming charge → 10 May 2026 (sent on 2 May 2026, in time).",
+          "DICGC: pay within 2 months of receiving the list → 2 July 2026."
+        ],
+        "formula_used": "List ≤ 3 months; payment ≤ 2 months from receipt",
+        "trap": "The two-month clock starts on receipt of the list."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, ss.16(1), 17 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "10 April 2026 and 2 August 2026",
+          "is_correct": false,
+          "error": "swaps the three-month and two-month periods",
+          "label": "A"
+        },
+        {
+          "text": "10 May 2026 and 10 July 2026",
+          "is_correct": false,
+          "error": "measures the payment period from the liquidator taking charge",
+          "label": "B"
+        },
+        {
+          "text": "10 May 2026 and 2 July 2026",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "10 May 2026 and 31 July 2026",
+          "is_correct": false,
+          "error": "applies the 90-day s.18A timeline to liquidation",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-066",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-payment-timelines-and-the-2021-amendment-5de0e63b",
+      "microtopic_name": "DICGC Act — Payment timelines and the 2021 amendment",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements on the DICGC (Amendment) Act, 2021:\n\n1. It enables payment to depositors of a bank under RBI directions restricting withdrawals, without waiting for liquidation.\n2. The bank must submit depositor details within 45 days of the directions, and payment must be made within 90 days of the directions.\n3. It raised the insurance cover from ₹1 lakh to ₹5 lakh per depositor.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "1: Correct — s.18A.",
+          "2: Correct — 45-day submission; payment by day 90.",
+          "3: Incorrect — the ₹5 lakh limit took effect on 4 February 2020 under DICGC's notification, before the 2021 Act."
+        ],
+        "formula_used": "DICGC Act s.18A",
+        "trap": "The 2021 Act changed timing, not the cover amount."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, s.18A; DICGC notification Feb 2020 — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "1 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 2: 45 + 30 + 15 = 90 days",
+          "label": "A"
+        },
+        {
+          "text": "1 and 2 only",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "2 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 1: s.18A covers banks under RBI withdrawal restrictions",
+          "label": "C"
+        },
+        {
+          "text": "1, 2 and 3",
+          "is_correct": false,
+          "error": "wrongly accepts statement 3: the ₹5 lakh cover dates from February 2020, not the 2021 Act",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-067",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-payment-timelines-and-the-2021-amendment-5de0e63b",
+      "microtopic_name": "DICGC Act — Payment timelines and the 2021 amendment",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "DICGC-SAHAKAR",
+      "stem": "**Case — Sahakar Urban Co-operative Bank.** On 20 January 2026, RBI issued directions under s.35A (read with s.56) of the BR Act to Sahakar Urban Co-operative Bank, an insured bank, prohibiting all withdrawals. The bank is not in liquidation and no scheme of amalgamation has been notified. Selected accounts:\n\n| Depositor / capacity | Balance incl. interest (₹ lakh) |\n|---|---:|\n| Mr Vikram — savings, individual | 1.80 |\n| Mr Vikram — FD, individual | 3.45 |\n| Mr Vikram and Mrs Vikram — joint FD | 2.40 |\n| Vikram & Sons (partnership firm) — current a/c | 6.50 |\n| Ms Leela — FD, individual | 4.20 |\n| State Government department — deposit | 40.00 |\n| District Central Co-operative Bank — term deposit | 25.00 |\n\n**Q1.** The last date by which the bank must furnish depositor details to DICGC is:",
+      "explanation": {
+        "steps": [
+          "s.18A: bank to submit within 45 days of the directions: 20 January 2026 + 45 days = 6 March 2026."
+        ],
+        "formula_used": "Submission = directions date + 45 days",
+        "trap": "45 days is the bank's step; 30 and 15 days belong to DICGC."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, s.18A — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "20 April 2026",
+          "is_correct": false,
+          "error": "treats the 90-day payment deadline as the submission deadline",
+          "label": "A"
+        },
+        {
+          "text": "19 February 2026",
+          "is_correct": false,
+          "error": "takes 30 days, DICGC's verification window, as the bank's deadline",
+          "label": "B"
+        },
+        {
+          "text": "6 March 2026",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "5 April 2026",
+          "is_correct": false,
+          "error": "takes the end of DICGC's 30-day verification window (day 75) as the bank's deadline",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "ACTB-068",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-payment-timelines-and-the-2021-amendment-5de0e63b",
+      "microtopic_name": "DICGC Act — Payment timelines and the 2021 amendment",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "DICGC-SAHAKAR",
+      "stem": "**Case — Sahakar Urban Co-operative Bank.** On 20 January 2026, RBI issued directions under s.35A (read with s.56) of the BR Act to Sahakar Urban Co-operative Bank, an insured bank, prohibiting all withdrawals. The bank is not in liquidation and no scheme of amalgamation has been notified. Selected accounts:\n\n| Depositor / capacity | Balance incl. interest (₹ lakh) |\n|---|---:|\n| Mr Vikram — savings, individual | 1.80 |\n| Mr Vikram — FD, individual | 3.45 |\n| Mr Vikram and Mrs Vikram — joint FD | 2.40 |\n| Vikram & Sons (partnership firm) — current a/c | 6.50 |\n| Ms Leela — FD, individual | 4.20 |\n| State Government department — deposit | 40.00 |\n| District Central Co-operative Bank — term deposit | 25.00 |\n\n**Q2.** The latest date by which eligible depositors should receive their insured amounts is:",
+      "explanation": {
+        "steps": [
+          "45 days (bank) + 30 days (DICGC verification) + 15 days (payment) = 90 days from the directions.",
+          "20 January 2026 + 90 days = 20 April 2026."
+        ],
+        "formula_used": "Payment by directions date + 90 days",
+        "trap": "The 90 days run from the directions, not from submission."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, s.18A — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "20 April 2026",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "5 April 2026",
+          "is_correct": false,
+          "error": "stops at the end of DICGC's verification window",
+          "label": "B"
+        },
+        {
+          "text": "4 June 2026",
+          "is_correct": false,
+          "error": "starts the 90 days from the bank's submission date",
+          "label": "C"
+        },
+        {
+          "text": "6 May 2026",
+          "is_correct": false,
+          "error": "applies the liquidation rule of two months from receipt of list",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "ACTB-069",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-deposit-insurance-cover-computation-a9b7942a",
+      "microtopic_name": "DICGC Act — Deposit insurance cover computation",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "DICGC-SAHAKAR",
+      "stem": "**Case — Sahakar Urban Co-operative Bank.** On 20 January 2026, RBI issued directions under s.35A (read with s.56) of the BR Act to Sahakar Urban Co-operative Bank, an insured bank, prohibiting all withdrawals. The bank is not in liquidation and no scheme of amalgamation has been notified. Selected accounts:\n\n| Depositor / capacity | Balance incl. interest (₹ lakh) |\n|---|---:|\n| Mr Vikram — savings, individual | 1.80 |\n| Mr Vikram — FD, individual | 3.45 |\n| Mr Vikram and Mrs Vikram — joint FD | 2.40 |\n| Vikram & Sons (partnership firm) — current a/c | 6.50 |\n| Ms Leela — FD, individual | 4.20 |\n| State Government department — deposit | 40.00 |\n| District Central Co-operative Bank — term deposit | 25.00 |\n\n**Q3.** Total insured amount payable in respect of the four accounts linked to the Vikram family (individual, joint and firm) is:",
+      "explanation": {
+        "steps": [
+          "Individual: 1.80 + 3.45 = 5.25 → capped at ₹5.00 lakh.",
+          "Joint FD (different capacity): ₹2.40 lakh.",
+          "Firm (separate depositor): 6.50 → capped at ₹5.00 lakh.",
+          "Total = 5.00 + 2.40 + 5.00 = ₹12.40 lakh."
+        ],
+        "formula_used": "Σ min(capacity-wise balance, ₹5 lakh)",
+        "trap": "Cap each capacity separately; aggregate within a capacity."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, ss.16, 18A — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹12.65 lakh",
+          "is_correct": false,
+          "error": "does not cap Mr Vikram's aggregated individual deposits",
+          "label": "A"
+        },
+        {
+          "text": "₹12.40 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹5.00 lakh",
+          "is_correct": false,
+          "error": "applies a single ₹5 lakh cap to everything linked to Mr Vikram",
+          "label": "C"
+        },
+        {
+          "text": "₹14.15 lakh",
+          "is_correct": false,
+          "error": "pays all balances in full without any cap",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "ACTB-070",
+      "subject": "financial-sector-acts",
+      "microtopic_slug": "fsa-dicgc-act-insured-banks-and-excluded-deposits-0f63be67",
+      "microtopic_name": "DICGC Act — Insured banks and excluded deposits",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "DICGC-SAHAKAR",
+      "stem": "**Case — Sahakar Urban Co-operative Bank.** On 20 January 2026, RBI issued directions under s.35A (read with s.56) of the BR Act to Sahakar Urban Co-operative Bank, an insured bank, prohibiting all withdrawals. The bank is not in liquidation and no scheme of amalgamation has been notified. Selected accounts:\n\n| Depositor / capacity | Balance incl. interest (₹ lakh) |\n|---|---:|\n| Mr Vikram — savings, individual | 1.80 |\n| Mr Vikram — FD, individual | 3.45 |\n| Mr Vikram and Mrs Vikram — joint FD | 2.40 |\n| Vikram & Sons (partnership firm) — current a/c | 6.50 |\n| Ms Leela — FD, individual | 4.20 |\n| State Government department — deposit | 40.00 |\n| District Central Co-operative Bank — term deposit | 25.00 |\n\n**Q4.** DICGC's total liability for all the accounts in the table is:",
+      "explanation": {
+        "steps": [
+          "Vikram-linked accounts: ₹12.40 lakh (as capped by capacity).",
+          "Ms Leela: ₹4.20 lakh (below cap).",
+          "State Government and inter-bank deposits are excluded by s.2(g).",
+          "Total = 12.40 + 4.20 = ₹16.60 lakh."
+        ],
+        "formula_used": "Σ eligible capped amounts; exclude s.2(g) deposits",
+        "trap": "Government and inter-bank deposits get nothing, not ₹5 lakh."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Deposit Insurance and Credit Guarantee Corporation Act, 1961, ss.2(g), 16, 18A — verify against current official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹26.60 lakh",
+          "is_correct": false,
+          "error": "also insures the State Government and inter-bank deposits up to ₹5 lakh each",
+          "label": "A"
+        },
+        {
+          "text": "₹18.35 lakh",
+          "is_correct": false,
+          "error": "excludes Government/inter-bank deposits but applies no cap",
+          "label": "B"
+        },
+        {
+          "text": "₹9.20 lakh",
+          "is_correct": false,
+          "error": "covers only individual-capacity deposits, dropping joint and firm accounts",
+          "label": "C"
+        },
+        {
+          "text": "₹16.60 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    }
+  ]
+}

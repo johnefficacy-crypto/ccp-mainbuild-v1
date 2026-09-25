@@ -9526,7 +9526,7 @@
       "difficulty": "hard",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "Under the Income-tax Act, 1961, an assessment order under section 143(3) was passed on 15 December 2023. The assessee files a rectification application under section 154, which the Assessing Officer receives on 10 August 2026. The last date to rectify the order at all, and the date by which the AO must dispose of this application, are respectively:",
+      "stem": "Under the Income-tax Act, 1961, an assessment order for AY 2022-23 under section 143(3) was passed on 15 December 2023. The assessee files a rectification application under section 154, which the Assessing Officer receives on 10 August 2026. The last date to rectify the order at all, and the date by which the AO must dispose of this application, are respectively:",
       "explanation": {
         "steps": [
           "s.154(7): no amendment after 4 years from the end of the FY in which the order was passed → FY 2023-24 ends 31 Mar 2024 → 31 Mar 2028.",
@@ -9587,7 +9587,7 @@
       "difficulty": "easy",
       "question_kind": "conceptual",
       "stimulus_group": null,
-      "stem": "Under the Income-tax Act, 1961, the penalty under section 272B for failure to comply with the PAN provisions of section 139A is:",
+      "stem": "Under the Income-tax Act, 1961 (law as applicable for AY 2025-26), the penalty under section 272B for failure to comply with the PAN provisions of section 139A is:",
       "explanation": {
         "steps": [
           "s.272B(1): failure to comply with s.139A → penalty of ₹10,000.",
@@ -9648,7 +9648,7 @@
       "difficulty": "hard",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "Under the Income-tax Act, 1961, an assessee (all income taxable at the maximum marginal rate of 30% plus 4% cess, no surcharge) returned ₹12,00,000. The assessed income is ₹20,00,000; the entire difference arose from fabricated purchase invoices. The penalty under section 270A is:",
+      "stem": "Under the Income-tax Act, 1961 (AY 2025-26), an assessee (all income taxable at the maximum marginal rate of 30% plus 4% cess, no surcharge) returned ₹12,00,000. The assessed income is ₹20,00,000; the entire difference arose from fabricated purchase invoices. The penalty under section 270A is:",
       "explanation": {
         "steps": [
           "Under-reported income = 20,00,000 − 12,00,000 = 8,00,000.",

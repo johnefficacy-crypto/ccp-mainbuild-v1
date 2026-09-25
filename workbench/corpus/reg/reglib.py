@@ -39,18 +39,24 @@ def lakh(x, d=2): return f"₹{x/1e5:,.{d}f} lakh"
 def crore(x, d=2): return f"₹{x/1e7:,.{d}f} crore"
 
 
-def load_catalogue(subject):
+def make_slug(name, prefix):
+    """House slug: <prefix>-<slugified name>-<md5(name)[:8]> (matches migration 273 SQL)."""
+    import re, hashlib
+    return prefix + "-" + re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-") + "-" + hashlib.md5(name.encode("utf-8")).hexdigest()[:8]
+
+
+def load_catalogue(subject, list_file=None):
     rows = {}
-    with open(os.path.join(HERE, "lists", f"{subject}.tsv"), encoding="utf-8") as f:
+    with open(list_file or os.path.join(HERE, "lists", f"{subject}.tsv"), encoding="utf-8") as f:
         for r in csv.DictReader(f, delimiter="\t"):
             rows[r["slug"]] = {"name": r["name"], "exams": [e for e in r["exams"].split(",") if e]}
     return rows
 
 
 class Batch:
-    def __init__(self, batch, subject, prefix):
+    def __init__(self, batch, subject, prefix, list_file=None):
         self.batch, self.subject, self.prefix = batch, subject, prefix
-        self.cat = load_catalogue(subject)
+        self.cat = load_catalogue(subject, list_file)
         self.Q = []
 
     def add(self, micro, level, stem, correct, wrongs, steps, formula, trap,

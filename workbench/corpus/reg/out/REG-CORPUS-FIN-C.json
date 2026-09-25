@@ -1,0 +1,4639 @@
+{
+  "batch": "REG-CORPUS-FIN-C",
+  "subject": "finance",
+  "count": 75,
+  "levels": {
+    "L1": 15,
+    "L2": 22,
+    "L3": 23,
+    "L4": 15
+  },
+  "questions": [
+    {
+      "id": "FINC-001",
+      "subject": "finance",
+      "microtopic_slug": "fin-cost-of-capital-debt-preference-and-equity-a02970f8",
+      "microtopic_name": "Cost of capital — debt, preference and equity",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "In computing the specific cost of each source of finance, the cost of debentures is taken net of tax while the cost of preference shares is not. The reason is that:",
+      "explanation": {
+        "steps": [
+          "Debenture interest is charged against profit before tax, so each ₹1 of interest costs the company ₹(1 − t).",
+          "Preference dividend is paid out of profit after tax, so there is no tax saving; Kp is used without (1 − t)."
+        ],
+        "formula_used": "Kd = I(1 − t) ÷ NP;  Kp = PD ÷ NP",
+        "trap": "Applying (1 − t) to preference dividend understates Kp."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Interest is a tax-deductible expense; preference dividend is an appropriation of profit",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Preference capital is redeemable, so any tax paid is recovered on its redemption",
+          "is_correct": false,
+          "error": "invents a tax recovery on redemption",
+          "label": "B"
+        },
+        {
+          "text": "Debentures are secured, so the lender rather than the company bears the tax",
+          "is_correct": false,
+          "error": "confuses security with tax incidence",
+          "label": "C"
+        },
+        {
+          "text": "Preference dividend is cumulative, so it is already stated net of corporate tax",
+          "is_correct": false,
+          "error": "confuses cumulative feature with tax treatment",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-002",
+      "subject": "finance",
+      "microtopic_slug": "fin-cost-of-capital-debt-preference-and-equity-a02970f8",
+      "microtopic_name": "Cost of capital — debt, preference and equity",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "A company finances part of its expansion from retained earnings. Ignoring shareholders' personal taxes, the cost of retained earnings is best taken as:",
+      "explanation": {
+        "steps": [
+          "Retained earnings belong to equity shareholders; their opportunity cost is the return shareholders could earn elsewhere, i.e. Ke.",
+          "No issue expenses are incurred on retained profits, so Kr = Ke without a flotation adjustment (Ke for a new issue is higher)."
+        ],
+        "formula_used": "Kr = Ke = D1 ÷ P0 + g",
+        "trap": "Retained earnings are not free; only the flotation cost is saved."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Equal to the post-tax cost of debt, the cheapest source available",
+          "is_correct": false,
+          "error": "confuses opportunity cost with cheapest source",
+          "label": "A"
+        },
+        {
+          "text": "Equal to the cost of equity after grossing up for flotation cost",
+          "is_correct": false,
+          "error": "flotation cost applies only to a fresh issue",
+          "label": "B"
+        },
+        {
+          "text": "Equal to the cost of equity, with no adjustment for flotation cost",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Nil, since no dividend is contractually payable on retained profits",
+          "is_correct": false,
+          "error": "treats retained earnings as cost-free",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-003",
+      "subject": "finance",
+      "microtopic_slug": "fin-cost-of-capital-debt-preference-and-equity-a02970f8",
+      "microtopic_name": "Cost of capital — debt, preference and equity",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Vedant Textiles Ltd issues 10% irredeemable debentures of face value ₹100 at the current market price of ₹94. Flotation cost is 2% of the issue price and the tax rate is 25%. The post-tax cost of these debentures is:",
+      "explanation": {
+        "steps": [
+          "Net proceeds = 94 × (1 − 0.02) = ₹92.12",
+          "Post-tax interest = 10 × (1 − 0.25) = ₹7.50",
+          "Kd = 7.50 ÷ 92.12 = 8.14%"
+        ],
+        "formula_used": "Kd (irredeemable) = I(1 − t) ÷ NP",
+        "trap": "Net proceeds, not face value, form the base."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "7.50%",
+          "is_correct": false,
+          "error": "face value used as net proceeds",
+          "label": "A"
+        },
+        {
+          "text": "7.98%",
+          "is_correct": false,
+          "error": "flotation cost ignored (market price used as net proceeds)",
+          "label": "B"
+        },
+        {
+          "text": "10.86%",
+          "is_correct": false,
+          "error": "pre-tax cost; tax shield on interest ignored",
+          "label": "C"
+        },
+        {
+          "text": "8.14%",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-004",
+      "subject": "finance",
+      "microtopic_slug": "fin-cost-of-capital-debt-preference-and-equity-a02970f8",
+      "microtopic_name": "Cost of capital — debt, preference and equity",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "The equity shares of Sarthak Pharma Ltd trade at ₹120. The dividend just paid is ₹6.00 per share and dividends are expected to grow at 8% a year indefinitely. A fresh issue will involve flotation cost of 4% of the market price. The cost of the new equity is:",
+      "explanation": {
+        "steps": [
+          "D1 = 6.00 × 1.08 = ₹6.48",
+          "Net proceeds = 120 × (1 − 0.04) = ₹115.20",
+          "Ke (new) = 6.48 ÷ 115.20 + 8% = 13.625%"
+        ],
+        "formula_used": "Ke = D1 ÷ P0(1 − f) + g",
+        "trap": "Gordon's model needs next year's dividend, not the one just paid."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "13.000%",
+          "is_correct": false,
+          "error": "D0 used and flotation ignored",
+          "label": "A"
+        },
+        {
+          "text": "13.625%",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "13.208%",
+          "is_correct": false,
+          "error": "D0 used instead of D1 = D0(1 + g)",
+          "label": "C"
+        },
+        {
+          "text": "13.400%",
+          "is_correct": false,
+          "error": "flotation cost ignored — this is the cost of retained earnings",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-005",
+      "subject": "finance",
+      "microtopic_slug": "fin-cost-of-capital-debt-preference-and-equity-a02970f8",
+      "microtopic_name": "Cost of capital — debt, preference and equity",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Kaveri Cables Ltd issues redeemable debentures on the following terms:\n\n| Particulars | Data |\n|---|---:|\n| Face value | ₹1,000 |\n| Coupon | 11% |\n| Issue price | 2% discount to face value |\n| Flotation cost | 3% of face value |\n| Redemption | At 5% premium after 8 years |\n| Tax rate | 30% |\n\nUsing the approximation method, the post-tax cost of the debentures is:",
+      "explanation": {
+        "steps": [
+          "NP = 1000 − 2% discount − 3% flotation = ₹950; RV = ₹1050",
+          "Annual post-tax interest = 110 × (1 − 0.3) = ₹77; amortisation = (1050 − 950) ÷ 8 = ₹12.50",
+          "Kd = (77 + 12.50) ÷ [(1050 + 950) ÷ 2] = 8.95%"
+        ],
+        "formula_used": "Kd = [I(1 − t) + (RV − NP)/n] ÷ [(RV + NP)/2]",
+        "trap": "Both the issue discount and the flotation cost reduce NP; the premium raises RV."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "8.54%",
+          "is_correct": false,
+          "error": "redemption premium ignored (redeemed at par)",
+          "label": "A"
+        },
+        {
+          "text": "9.42%",
+          "is_correct": false,
+          "error": "net proceeds used as the denominator instead of the average of RV and NP",
+          "label": "B"
+        },
+        {
+          "text": "8.58%",
+          "is_correct": false,
+          "error": "tax shield also applied to the amortised discount and premium",
+          "label": "C"
+        },
+        {
+          "text": "8.95%",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-006",
+      "subject": "finance",
+      "microtopic_slug": "fin-cost-of-capital-debt-preference-and-equity-a02970f8",
+      "microtopic_name": "Cost of capital — debt, preference and equity",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Anvaya Chemicals Ltd issues 9% preference shares of ₹100 each at par. Flotation cost is 3% of the issue price and the shares are redeemable at a premium of 10% after 10 years. The company's tax rate is 25%. The cost of preference capital is:",
+      "explanation": {
+        "steps": [
+          "NP = 100 × (1 − 0.03) = ₹97; RV = ₹110; PD = ₹9",
+          "Kp = (9 + (110 − 97) ÷ 10) ÷ [(110 + 97) ÷ 2] = 10.30 ÷ 103.5 = 9.95%",
+          "The tax rate is irrelevant: preference dividend is not tax-deductible."
+        ],
+        "formula_used": "Kp = [PD + (RV − NP)/n] ÷ [(RV + NP)/2]",
+        "trap": "The tax rate in the stem is a lure."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "10.62%",
+          "is_correct": false,
+          "error": "net proceeds used as the denominator",
+          "label": "A"
+        },
+        {
+          "text": "9.95%",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "7.78%",
+          "is_correct": false,
+          "error": "tax shield wrongly applied to preference dividend",
+          "label": "C"
+        },
+        {
+          "text": "9.44%",
+          "is_correct": false,
+          "error": "redemption premium ignored",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-007",
+      "subject": "finance",
+      "microtopic_slug": "fin-cost-of-capital-debt-preference-and-equity-a02970f8",
+      "microtopic_name": "Cost of capital — debt, preference and equity",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Nirmal Agro Ltd has just reported EPS of ₹20. It retains 60% of earnings and earns a return of 15% on equity, which is expected to continue. The share trades at ₹150. Using the dividend growth model with g = b × r, the cost of equity is:",
+      "explanation": {
+        "steps": [
+          "g = b × r = 0.6 × 0.15 = 9%",
+          "D0 = 20 × (1 − 0.6) = ₹8.00; D1 = 8.00 × 1.09 = ₹8.72",
+          "Ke = 8.72 ÷ 150 + 9% = 14.81%"
+        ],
+        "formula_used": "g = b × r;  Ke = D1 ÷ P0 + g",
+        "trap": "Growth comes from the retained portion; the dividend is the paid-out portion."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "14.33%",
+          "is_correct": false,
+          "error": "D0 used instead of D1",
+          "label": "A"
+        },
+        {
+          "text": "14.81%",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "11.65%",
+          "is_correct": false,
+          "error": "growth computed as payout × r instead of retention × r",
+          "label": "C"
+        },
+        {
+          "text": "17.72%",
+          "is_correct": false,
+          "error": "retained portion taken as the dividend (retention confused with payout)",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-008",
+      "subject": "finance",
+      "microtopic_slug": "fin-weighted-average-and-marginal-cost-of-capital-6b18c6d9",
+      "microtopic_name": "Weighted average and marginal cost of capital",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "A firm plans to raise new capital in a fixed target mix. In constructing its marginal cost of capital schedule, a break point occurs at a total new financing equal to:",
+      "explanation": {
+        "steps": [
+          "When a source's cheaper tranche is exhausted, its component cost rises, and so does WACC.",
+          "Because that source provides only its weight w of every rupee raised, the tranche lasts until total financing = Tranche ÷ w."
+        ],
+        "formula_used": "Break point = Limit of cheaper funds ÷ Weight of that source",
+        "trap": "Dividing by the weight grosses the tranche up to total capital."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "The amount of the cheaper tranche of a source × that source's weight",
+          "is_correct": false,
+          "error": "multiplies by the weight instead of dividing",
+          "label": "A"
+        },
+        {
+          "text": "The amount of the cheaper tranche of a source ÷ the firm's current WACC",
+          "is_correct": false,
+          "error": "divides by WACC instead of the weight",
+          "label": "B"
+        },
+        {
+          "text": "The amount of the cheaper tranche of a source ÷ that source's weight",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "The total new capital required ÷ the weight of the costliest source",
+          "is_correct": false,
+          "error": "uses total requirement, not the tranche limit",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-009",
+      "subject": "finance",
+      "microtopic_slug": "fin-weighted-average-and-marginal-cost-of-capital-6b18c6d9",
+      "microtopic_name": "Weighted average and marginal cost of capital",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Ishaan Motors Ltd uses the following target capital structure. Its tax rate is 30%.\n\n| Source | Target weight | Cost |\n|---|---:|---:|\n| Equity | 60% | 16% |\n| Preference | 10% | 11% |\n| Debt (pre-tax) | 30% | 12% |\n\nThe weighted average cost of capital is:",
+      "explanation": {
+        "steps": [
+          "Post-tax Kd = 12% × (1 − 0.30) = 8.40%",
+          "WACC = 0.60 × 16% + 0.10 × 11% + 0.30 × 8.40% = 9.60% + 1.10% + 2.52%",
+          "= 13.22%"
+        ],
+        "formula_used": "WACC = Σ wᵢ kᵢ with Kd post-tax",
+        "trap": "Only debt gets the tax shield."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "13.22%",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "12.89%",
+          "is_correct": false,
+          "error": "tax shield also applied to preference dividend",
+          "label": "B"
+        },
+        {
+          "text": "14.30%",
+          "is_correct": false,
+          "error": "pre-tax cost of debt used",
+          "label": "C"
+        },
+        {
+          "text": "11.80%",
+          "is_correct": false,
+          "error": "simple average of component costs; weights ignored",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-010",
+      "subject": "finance",
+      "microtopic_slug": "fin-weighted-average-and-marginal-cost-of-capital-6b18c6d9",
+      "microtopic_name": "Weighted average and marginal cost of capital",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Extract from the books of Tarang Electricals Ltd:\n\n| Source | Book value (₹ lakh) | Market data | Cost |\n|---|---:|---:|---:|\n| Equity shares (₹10 each) | 50 | 5 lakh shares at ₹36 | 15% |\n| Retained earnings | 20 | — | 15% |\n| 12% debentures | 30 | ₹105 per ₹100 | 8.40% (post-tax) |\n\nThe weighted average cost of capital using market-value weights is:",
+      "explanation": {
+        "steps": [
+          "Market value of equity = 5 lakh × ₹36 = ₹180 lakh (this already includes retained earnings)",
+          "Market value of debentures = 30 × 105/100 = ₹31.5 lakh",
+          "WACC = (180 × 15% + 31.5 × 8.4%) ÷ 211.5 = 14.02%"
+        ],
+        "formula_used": "Market WACC = (E_m·Ke + D_m·Kd) ÷ (E_m + D_m)",
+        "trap": "Retained earnings are part of equity's market value; do not add them twice."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "14.10%",
+          "is_correct": false,
+          "error": "retained earnings added again to the market value of equity",
+          "label": "A"
+        },
+        {
+          "text": "14.02%",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "14.06%",
+          "is_correct": false,
+          "error": "debentures taken at book value while equity is at market value",
+          "label": "C"
+        },
+        {
+          "text": "13.02%",
+          "is_correct": false,
+          "error": "book-value weights used",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-011",
+      "subject": "finance",
+      "microtopic_slug": "fin-weighted-average-and-marginal-cost-of-capital-6b18c6d9",
+      "microtopic_name": "Weighted average and marginal cost of capital",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Ojas Ceramics Ltd raises new funds in the ratio debt 40 : equity 60. Retained earnings of ₹18 lakh are available at a cost of 15%; beyond that, new equity costs 17%. The first ₹10 lakh of debt costs 7% post-tax and further debt costs 8.4% post-tax. If the company raises ₹28 lakh in total, the marginal cost of capital on the last rupee raised is:",
+      "explanation": {
+        "steps": [
+          "Break point (debt) = 10 ÷ 0.4 = ₹25 lakh; break point (retained earnings) = 18 ÷ 0.6 = ₹30 lakh",
+          "At ₹28 lakh: debt is in the costlier tranche (8.4%), equity still from retained earnings (15%)",
+          "MCC = 0.40 × 8.4% + 0.60 × 15% = 12.36%"
+        ],
+        "formula_used": "Break point = Tranche ÷ Weight; MCC = Σ w × marginal component cost",
+        "trap": "₹28 lakh lies between the ₹25 lakh and ₹30 lakh break points."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "11.80%",
+          "is_correct": false,
+          "error": "break points ignored; cheapest component costs used throughout",
+          "label": "A"
+        },
+        {
+          "text": "11.86%",
+          "is_correct": false,
+          "error": "average cost over the whole ₹28 lakh instead of the marginal cost",
+          "label": "B"
+        },
+        {
+          "text": "13.56%",
+          "is_correct": false,
+          "error": "tranche limits taken as break points without dividing by weights",
+          "label": "C"
+        },
+        {
+          "text": "12.36%",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-012",
+      "subject": "finance",
+      "microtopic_slug": "fin-weighted-average-and-marginal-cost-of-capital-6b18c6d9",
+      "microtopic_name": "Weighted average and marginal cost of capital",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Capital of Lohit Paper Ltd:\n\n| Source | Book value (₹ lakh) | Market price |\n|---|---:|---:|\n| Equity shares of ₹10 each | 100 | ₹50 per share |\n| 10% irredeemable preference shares | 20 | ₹95 per ₹100 |\n| 12% irredeemable debentures | 40 | ₹96 per ₹100 |\n\nThe next dividend expected on equity is ₹4 per share, growing at 6% a year. The tax rate is 25%. Using market-value weights and market prices for component costs, WACC is:",
+      "explanation": {
+        "steps": [
+          "Ke = 4/50 + 6% = 14%; Kp = 10/95 = 10.53%; Kd = 12 × 0.75/96 = 9.38%",
+          "Market values: E = ₹500 lakh, P = ₹19 lakh, D = ₹38.4 lakh; total ₹557.4 lakh",
+          "WACC = (500 × 14% + 19 × 10.53% + 38.4 × 9.38%) ÷ 557.4 = 13.56%"
+        ],
+        "formula_used": "WACC = Σ (MVᵢ × kᵢ) ÷ Σ MVᵢ",
+        "trap": "The stated dividend is already D1."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "13.99%",
+          "is_correct": false,
+          "error": "₹4 treated as D0 and grown again",
+          "label": "A"
+        },
+        {
+          "text": "13.78%",
+          "is_correct": false,
+          "error": "pre-tax cost of debentures used",
+          "label": "B"
+        },
+        {
+          "text": "13.56%",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "12.41%",
+          "is_correct": false,
+          "error": "book-value weights used",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-013",
+      "subject": "finance",
+      "microtopic_slug": "fin-capm-beta-and-the-security-market-line-3e220793",
+      "microtopic_name": "CAPM, beta and the security market line",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "In the Capital Asset Pricing Model, the beta of a security measures:",
+      "explanation": {
+        "steps": [
+          "β = Cov(Ri, Rm) ÷ Var(Rm): the co-movement of the security with the market.",
+          "Only this non-diversifiable (systematic) risk earns a premium in CAPM."
+        ],
+        "formula_used": "β = Cov(i, m) ÷ σm²",
+        "trap": "Beta is not total risk; a stock can be volatile yet have a low beta."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Its excess return over that predicted by the market model",
+          "is_correct": false,
+          "error": "that is alpha, not beta",
+          "label": "A"
+        },
+        {
+          "text": "Its systematic risk — sensitivity of its return to market returns",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "Its unsystematic risk — variation specific to the company",
+          "is_correct": false,
+          "error": "diversifiable risk is not priced in CAPM",
+          "label": "C"
+        },
+        {
+          "text": "Its total risk — the standard deviation of its own returns",
+          "is_correct": false,
+          "error": "total risk, not systematic risk",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-014",
+      "subject": "finance",
+      "microtopic_slug": "fin-capm-beta-and-the-security-market-line-3e220793",
+      "microtopic_name": "CAPM, beta and the security market line",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements:\n\n1. The security market line relates expected return to beta and applies to individual securities as well as portfolios.\n2. The capital market line relates expected return to standard deviation and applies only to efficient portfolios.\n3. A security whose expected return plots above the security market line is overvalued.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "SML: E(R) = Rf + β(Rm − Rf) — valid for any security or portfolio.",
+          "CML: E(Rp) = Rf + [(Rm − Rf)/σm]σp — valid only for efficient (fully diversified) portfolios.",
+          "Above the SML → expected return > required return → price too low → undervalued (positive alpha)."
+        ],
+        "formula_used": "SML vs CML",
+        "trap": "Above SML means undervalued, not overvalued."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "1 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 2: CML uses σ and holds only for efficient portfolios",
+          "label": "A"
+        },
+        {
+          "text": "1 and 2 only",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "All of 1, 2 and 3",
+          "is_correct": false,
+          "error": "wrongly accepts statement 3: above the SML the security offers more than its required return, i.e. it is undervalued",
+          "label": "C"
+        },
+        {
+          "text": "2 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 1: SML uses beta and holds for every asset",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-015",
+      "subject": "finance",
+      "microtopic_slug": "fin-capm-beta-and-the-security-market-line-3e220793",
+      "microtopic_name": "CAPM, beta and the security market line",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "The covariance between the returns of Pranav Steel Ltd and the market index is 0.0216. The standard deviation of the market return is 15% and that of Pranav Steel is 20%. The risk-free rate is 7% and the expected market return is 12.5%. The required return on Pranav Steel is:",
+      "explanation": {
+        "steps": [
+          "β = Cov ÷ σm² = 0.0216 ÷ 0.0225 = 0.96",
+          "Required return = 7% + 0.96 × (12.5% − 7%) = 12.28%"
+        ],
+        "formula_used": "β = Cov(i,m)/σm²;  k = Rf + β(Rm − Rf)",
+        "trap": "Divide the covariance by market variance, not by σm or σi·σm."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "14.33%",
+          "is_correct": false,
+          "error": "ratio of standard deviations used as beta, ignoring correlation",
+          "label": "A"
+        },
+        {
+          "text": "10.96%",
+          "is_correct": false,
+          "error": "correlation coefficient used as beta",
+          "label": "B"
+        },
+        {
+          "text": "12.28%",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "12%",
+          "is_correct": false,
+          "error": "β × Rm; risk-free rate ignored",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-016",
+      "subject": "finance",
+      "microtopic_slug": "fin-capm-beta-and-the-security-market-line-3e220793",
+      "microtopic_name": "CAPM, beta and the security market line",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "An investor holds the following portfolio:\n\n| Stock | Shares held | Price (₹) | Beta |\n|---|---:|---:|---:|\n| A | 2,000 | 200 | 1.4 |\n| B | 5,000 | 70 | 0.8 |\n| C | 1,000 | 250 | 1.1 |\n\nThe risk-free rate is 6% and the market return 12%. The required return on the portfolio under CAPM is:",
+      "explanation": {
+        "steps": [
+          "Market values: A ₹4,00,000, B ₹3,50,000, C ₹2,50,000; total ₹10,00,000",
+          "βp = (0.40 × 1.4) + (0.35 × 0.8) + (0.25 × 1.1) = 1.115",
+          "Required return = 6% + 1.115 × 6% = 12.69%"
+        ],
+        "formula_used": "βp = Σ wᵢβᵢ (value weights)",
+        "trap": "Weights are market values, not share counts."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "11.92%",
+          "is_correct": false,
+          "error": "betas weighted by number of shares instead of market value",
+          "label": "A"
+        },
+        {
+          "text": "13.38%",
+          "is_correct": false,
+          "error": "portfolio beta × Rm; risk-free rate ignored",
+          "label": "B"
+        },
+        {
+          "text": "12.69%",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "12.60%",
+          "is_correct": false,
+          "error": "simple average of betas",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-017",
+      "subject": "finance",
+      "microtopic_slug": "fin-capm-beta-and-the-security-market-line-3e220793",
+      "microtopic_name": "CAPM, beta and the security market line",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "The risk-free rate is 6% and the expected market return 13%.\n\n| Stock | Beta | Analyst's expected return |\n|---|---:|---:|\n| P | 1.2 | 15.0% |\n| Q | 0.8 | 11.2% |\n| R | 1.5 | 16.0% |\n| S | 0.6 | 10.8% |\n\nOn the basis of the security market line, which stocks are undervalued?",
+      "explanation": {
+        "steps": [
+          "Required return = 6% + β × 7%: P = 14.4%; Q = 11.6%; R = 16.5%; S = 10.2%",
+          "Alpha = expected − required: P = +0.6%; Q = -0.4%; R = -0.5%; S = +0.6%",
+          "Positive alpha (above SML) → undervalued: P and S"
+        ],
+        "formula_used": "α = E(R) − [Rf + β(Rm − Rf)]",
+        "trap": "A high expected return is not a bargain if beta is higher still."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "P and S",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "Q and S",
+          "is_correct": false,
+          "error": "expected return compared with β × Rm, ignoring the risk-free rate",
+          "label": "B"
+        },
+        {
+          "text": "P and R",
+          "is_correct": false,
+          "error": "highest expected returns taken as undervalued without adjusting for beta",
+          "label": "C"
+        },
+        {
+          "text": "Q and R",
+          "is_correct": false,
+          "error": "sign of alpha reversed — these plot below the SML",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-018",
+      "subject": "finance",
+      "microtopic_slug": "fin-capm-beta-and-the-security-market-line-3e220793",
+      "microtopic_name": "CAPM, beta and the security market line",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Returns over five years:\n\n| Year | Market return (%) | Return on Hemant Ltd (%) |\n|---|---:|---:|\n| 1 | 10 | 15 |\n| 2 | 6 | 4 |\n| 3 | -2 | 1 |\n| 4 | 14 | 18 |\n| 5 | 12 | 9 |\n\nThe beta of Hemant Ltd, estimated from these data, is closest to:",
+      "explanation": {
+        "steps": [
+          "Mean market return = 8.0%; mean stock return = 9.4%",
+          "Cov(i,m) = Σ(dm × di) ÷ 5 = 31.20; Var(m) = Σdm² ÷ 5 = 32.00",
+          "β = 31.20 ÷ 32.00 = 0.97"
+        ],
+        "formula_used": "β = Cov(i,m) ÷ Var(m)",
+        "trap": "Whether n or n − 1 is used cancels out in the ratio."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "1.13",
+          "is_correct": false,
+          "error": "ratio of standard deviations (σi/σm), ignoring correlation",
+          "label": "A"
+        },
+        {
+          "text": "0.86",
+          "is_correct": false,
+          "error": "correlation coefficient reported as beta",
+          "label": "B"
+        },
+        {
+          "text": "0.76",
+          "is_correct": false,
+          "error": "covariance divided by the variance of the stock instead of the market",
+          "label": "C"
+        },
+        {
+          "text": "0.97",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-019",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-payback-and-discounted-payback-608f2476",
+      "microtopic_name": "Capital budgeting — payback and discounted payback",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements about payback methods:\n\n1. The simple payback period ignores the time value of money.\n2. For a conventional project with a positive discount rate, the discounted payback period is longer than the simple payback period.\n3. The discounted payback period, unlike the simple payback period, takes into account cash flows arising after the payback year.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "Simple payback accumulates undiscounted cash flows → no time value.",
+          "Each discounted inflow is smaller than its undiscounted value, so cumulative recovery is slower.",
+          "Both methods stop at the recovery point; later cash flows are ignored — the key weakness shared by both."
+        ],
+        "formula_used": "Payback = years to recover outlay",
+        "trap": "Discounting fixes time value, not the post-payback blind spot."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "1 and 2 only",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "All of 1, 2 and 3",
+          "is_correct": false,
+          "error": "wrongly accepts statement 3: both methods ignore post-payback cash flows",
+          "label": "B"
+        },
+        {
+          "text": "1 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 2: discounted flows are smaller, so recovery takes longer",
+          "label": "C"
+        },
+        {
+          "text": "2 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 1: payback adds undiscounted flows",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-020",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-payback-and-discounted-payback-608f2476",
+      "microtopic_name": "Capital budgeting — payback and discounted payback",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A project costing ₹12 lakh is expected to generate:\n\n| Year | 1 | 2 | 3 | 4 | 5 |\n|---|---:|---:|---:|---:|---:|\n| Cash inflow (₹ lakh) | 3 | 4 | 3.5 | 3 | 2.5 |\n\nIts payback period is:",
+      "explanation": {
+        "steps": [
+          "Cumulative inflows: 3, 7, 10.5, 13.5, 16",
+          "After 3 years ₹10.5 lakh is recovered; balance ₹1.5 lakh",
+          "Payback = 3 + 1.5/3 = 3.50 years"
+        ],
+        "formula_used": "Payback = Years before recovery + Unrecovered balance ÷ Inflow of recovery year",
+        "trap": "Averaging uneven flows misstates payback."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "3.50 years",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "4.00 years",
+          "is_correct": false,
+          "error": "whole years only; no interpolation",
+          "label": "B"
+        },
+        {
+          "text": "3.75 years",
+          "is_correct": false,
+          "error": "outlay divided by average annual inflow",
+          "label": "C"
+        },
+        {
+          "text": "3.43 years",
+          "is_correct": false,
+          "error": "balance divided by the previous year's inflow",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-021",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-payback-and-discounted-payback-608f2476",
+      "microtopic_name": "Capital budgeting — payback and discounted payback",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A machine costing ₹10 lakh has a life of 5 years with no salvage and is depreciated on a straight-line basis. It will add ₹3.6 lakh a year to earnings before depreciation and tax. The tax rate is 30%. The payback period on cash flow after tax is:",
+      "explanation": {
+        "steps": [
+          "Depreciation = 10/5 = ₹2 lakh",
+          "CFAT = (3.6 − 2) × (1 − 0.3) + 2 = ₹3.12 lakh",
+          "Payback = 10 ÷ 3.12 = 3.21 years"
+        ],
+        "formula_used": "CFAT = (EBDT − Dep)(1 − t) + Dep",
+        "trap": "Depreciation is non-cash but saves tax."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "3.97 years",
+          "is_correct": false,
+          "error": "tax charged on earnings before depreciation; tax shield ignored",
+          "label": "A"
+        },
+        {
+          "text": "8.93 years",
+          "is_correct": false,
+          "error": "profit after tax used; depreciation not added back",
+          "label": "B"
+        },
+        {
+          "text": "3.21 years",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "2.78 years",
+          "is_correct": false,
+          "error": "pre-tax cash flow used",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-022",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-payback-and-discounted-payback-608f2476",
+      "microtopic_name": "Capital budgeting — payback and discounted payback",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A project requires an outlay of ₹8 lakh.\n\n| Year | 1 | 2 | 3 | 4 |\n|---|---:|---:|---:|---:|\n| Cash inflow (₹ lakh) | 2.5 | 3 | 3.5 | 2 |\n| PV factor at 10% | 0.909 | 0.826 | 0.751 | 0.683 |\n\nIts discounted payback period is:",
+      "explanation": {
+        "steps": [
+          "PVs: 2.2725, 2.4780, 2.6285, 1.3660",
+          "Cumulative PV after 3 years = 7.3790; balance = 0.6210",
+          "Discounted payback = 3 + 0.6210/1.3660 = 3.45 years"
+        ],
+        "formula_used": "DPB = Years before recovery + Unrecovered PV ÷ PV of recovery-year inflow",
+        "trap": "Interpolate on the discounted inflow of the recovery year."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "4.00 years",
+          "is_correct": false,
+          "error": "whole years only; no interpolation",
+          "label": "A"
+        },
+        {
+          "text": "3.31 years",
+          "is_correct": false,
+          "error": "fraction of final year computed on the undiscounted inflow",
+          "label": "B"
+        },
+        {
+          "text": "2.71 years",
+          "is_correct": false,
+          "error": "simple (undiscounted) payback",
+          "label": "C"
+        },
+        {
+          "text": "3.45 years",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-023",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-npv-irr-pi-and-mirr-f6de825a",
+      "microtopic_name": "Capital budgeting — NPV, IRR, PI and MIRR",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "The modified internal rate of return (MIRR) differs from the conventional IRR chiefly because MIRR assumes that intermediate cash inflows are reinvested at:",
+      "explanation": {
+        "steps": [
+          "MIRR compounds inflows to a terminal value at the cost of capital (or a stated rate).",
+          "It then finds the rate equating PV of outflows with that terminal value — giving a single, realistic rate."
+        ],
+        "formula_used": "MIRR = (TV of inflows at k ÷ PV of outflows)^(1/n) − 1",
+        "trap": "IRR implicitly assumes reinvestment at the IRR itself."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "A zero rate, so that only nominal inflows are summed",
+          "is_correct": false,
+          "error": "confuses MIRR with undiscounted payback logic",
+          "label": "A"
+        },
+        {
+          "text": "The risk-free rate, so that reinvestment risk is removed",
+          "is_correct": false,
+          "error": "not the standard MIRR assumption",
+          "label": "B"
+        },
+        {
+          "text": "The firm's cost of capital (or a specified reinvestment rate)",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "The project's own IRR, as in the conventional method",
+          "is_correct": false,
+          "error": "that is the IRR reinvestment assumption",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-024",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-npv-irr-pi-and-mirr-f6de825a",
+      "microtopic_name": "Capital budgeting — NPV, IRR, PI and MIRR",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Suryoday Packaging Ltd evaluates a project costing ₹20 lakh.\n\n| Year | 1 | 2 | 3 | 4 |\n|---|---:|---:|---:|---:|\n| Cash inflow (₹ lakh) | 6 | 7 | 8 | 5 |\n| PV factor at 12% | 0.893 | 0.797 | 0.712 | 0.636 |\n\nThe NPV of the project is:",
+      "explanation": {
+        "steps": [
+          "PV of inflows = 6×0.893 + 7×0.797 + 8×0.712 + 5×0.636 = ₹19.813 lakh",
+          "NPV = 19.813 − 20 = −₹0.187 lakh = −₹18,700"
+        ],
+        "formula_used": "NPV = Σ CFt × PVFt − Outlay",
+        "trap": "Undiscounted inflows (₹26 lakh) comfortably exceed cost, but the NPV is negative."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "−₹18,700",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹2,18,700",
+          "is_correct": false,
+          "error": "year-1 inflow left undiscounted; factors shifted one year",
+          "label": "B"
+        },
+        {
+          "text": "−₹25,950",
+          "is_correct": false,
+          "error": "average inflow multiplied by the 4-year annuity factor",
+          "label": "C"
+        },
+        {
+          "text": "₹18,700",
+          "is_correct": false,
+          "error": "sign reversed (outlay minus PV of inflows)",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-025",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-npv-irr-pi-and-mirr-f6de825a",
+      "microtopic_name": "Capital budgeting — NPV, IRR, PI and MIRR",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A project's NPV is ₹12,400 at a discount rate of 14% and −₹8,600 at 18%. By linear interpolation, its IRR is:",
+      "explanation": {
+        "steps": [
+          "Total NPV swing = 12,400 + 8,600 = 21,000",
+          "IRR = 14% + (12,400 ÷ 21,000) × 4% = 16.36%"
+        ],
+        "formula_used": "IRR = L + [NPV_L ÷ (NPV_L − NPV_H)] × (H − L)",
+        "trap": "The NPV at the lower rate drives the fraction."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "14.59%",
+          "is_correct": false,
+          "error": "fraction added as percentage points without multiplying by the 4% rate gap",
+          "label": "A"
+        },
+        {
+          "text": "16.77%",
+          "is_correct": false,
+          "error": "ratio of the two NPVs used as the fraction",
+          "label": "B"
+        },
+        {
+          "text": "16.36%",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "15.64%",
+          "is_correct": false,
+          "error": "NPV at the higher rate placed in the numerator",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-026",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-npv-irr-pi-and-mirr-f6de825a",
+      "microtopic_name": "Capital budgeting — NPV, IRR, PI and MIRR",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Dhruv Castings Ltd is appraising a new plant:\n\n| Particulars | Data |\n|---|---:|\n| Cost of plant | ₹30.00 lakh |\n| Working capital (year 0, released year 5) | ₹4.00 lakh |\n| Life / estimated and actual salvage | 5 years / ₹3.00 lakh |\n| Depreciation | Straight-line on (cost − salvage) |\n| Annual earnings before depreciation and tax | ₹10.00 lakh |\n| Tax rate | 30% |\n| Cost of capital; PVAF(12%, 5); PVF(12%, yr 5) | 12%; 3.605; 0.567 |\n\nThe NPV of the project is:",
+      "explanation": {
+        "steps": [
+          "Depreciation = (30 − 3)/5 = ₹5.4 lakh; CFAT = (10 − 5.4) × 0.7 + 5.4 = ₹8.62 lakh",
+          "PV of CFAT = 8.62 × 3.605 = ₹31.075 lakh",
+          "Terminal inflow = salvage 3 (equals book value, no tax) + WC 4 = ₹7 lakh; PV = ₹3.969 lakh",
+          "NPV = 31.075 + 3.969 − 34 = ₹1.044 lakh"
+        ],
+        "formula_used": "NPV = PV(CFAT) + PV(salvage + WC) − (Cost + WC)",
+        "trap": "Working capital is an outflow at the start and an inflow at the end."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹1.69 lakh",
+          "is_correct": false,
+          "error": "depreciation charged on full cost although salvage is recovered",
+          "label": "A"
+        },
+        {
+          "text": "−₹1.22 lakh",
+          "is_correct": false,
+          "error": "working capital invested but its release in year 5 omitted",
+          "label": "B"
+        },
+        {
+          "text": "₹2.78 lakh",
+          "is_correct": false,
+          "error": "working capital omitted from both the outlay and the terminal inflow",
+          "label": "C"
+        },
+        {
+          "text": "₹1.04 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-027",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-npv-irr-pi-and-mirr-f6de825a",
+      "microtopic_name": "Capital budgeting — NPV, IRR, PI and MIRR",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A machine costing ₹20 lakh is fully depreciated on a straight-line basis over 4 years (nil book value at the end). In year 4, it generates earnings before depreciation and tax of ₹7 lakh, is sold for ₹2.5 lakh, and working capital of ₹1.5 lakh is released. Tax is 30%, and any profit on sale of the asset is taxed at the same rate. The total cash flow in year 4 is:",
+      "explanation": {
+        "steps": [
+          "Operating CFAT = (7 − 5) × 0.7 + 5 = ₹6.40 lakh",
+          "Profit on sale = 2.5 − 0 (book value) = ₹2.5; tax = ₹0.75; net salvage = ₹1.75 lakh",
+          "Year-4 cash flow = 6.40 + 1.75 + 1.5 = ₹9.65 lakh"
+        ],
+        "formula_used": "Terminal CF = Operating CFAT + Salvage − Tax on (Salvage − BV) + WC released",
+        "trap": "Release of working capital is not taxable."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹9.65 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹10.40 lakh",
+          "is_correct": false,
+          "error": "sale proceeds taken gross; tax on profit on sale ignored",
+          "label": "B"
+        },
+        {
+          "text": "₹8.15 lakh",
+          "is_correct": false,
+          "error": "release of working capital omitted",
+          "label": "C"
+        },
+        {
+          "text": "₹9.20 lakh",
+          "is_correct": false,
+          "error": "tax wrongly charged on the working capital released",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-028",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-npv-irr-pi-and-mirr-f6de825a",
+      "microtopic_name": "Capital budgeting — NPV, IRR, PI and MIRR",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A project costs ₹10 lakh and yields ₹4 lakh, ₹5 lakh and ₹4 lakh at the end of years 1, 2 and 3. The cost of capital is 10%. The project's MIRR is:",
+      "explanation": {
+        "steps": [
+          "Terminal value at 10% = 4 × 1.21 + 5 × 1.10 + 4 = ₹14.34 lakh",
+          "MIRR = (14.34 ÷ 10)^(1/3) − 1 = 12.77%",
+          "Compare IRR = 14.33%: MIRR is lower because inflows earn only 10% on reinvestment."
+        ],
+        "formula_used": "MIRR = (TV ÷ PV of outlay)^(1/n) − 1",
+        "trap": "The final inflow is not compounded."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "14.33%",
+          "is_correct": false,
+          "error": "conventional IRR (reinvestment at IRR) reported",
+          "label": "A"
+        },
+        {
+          "text": "12.77%",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "14.47%",
+          "is_correct": false,
+          "error": "simple average return on terminal value; no compounding",
+          "label": "C"
+        },
+        {
+          "text": "16.41%",
+          "is_correct": false,
+          "error": "every inflow compounded one year too many (terminal value × 1.10)",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-029",
+      "subject": "finance",
+      "microtopic_slug": "fin-npv-vs-irr-conflict-and-capital-rationing-70c6c5e7",
+      "microtopic_name": "NPV vs IRR conflict and capital rationing",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "When NPV and IRR rank two mutually exclusive projects differently, the NPV ranking is generally preferred because NPV:",
+      "explanation": {
+        "steps": [
+          "NPV measures the ₹ increase in shareholder wealth — the objective of the firm.",
+          "Its implicit reinvestment rate (cost of capital) is more realistic than the IRR's own-rate assumption."
+        ],
+        "formula_used": "Mutually exclusive → choose higher NPV",
+        "trap": "IRR is a relative measure and ignores scale."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Can be computed for uneven cash flows, whereas the IRR cannot be computed",
+          "is_correct": false,
+          "error": "IRR can be computed for uneven flows",
+          "label": "A"
+        },
+        {
+          "text": "Measures absolute wealth added, assuming reinvestment at the cost of capital",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "Is always numerically higher than the IRR computed for the same project",
+          "is_correct": false,
+          "error": "compares a ₹ amount with a %",
+          "label": "C"
+        },
+        {
+          "text": "Is the only method that properly recognises the time value of money",
+          "is_correct": false,
+          "error": "IRR also discounts cash flows",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-030",
+      "subject": "finance",
+      "microtopic_slug": "fin-npv-vs-irr-conflict-and-capital-rationing-70c6c5e7",
+      "microtopic_name": "NPV vs IRR conflict and capital rationing",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Two mutually exclusive projects have the following cash flows:\n\n| Year | 0 | 1 | 2 |\n|---|---:|---:|---:|\n| Project A (₹ lakh) | -20 | 4 | 24 |\n| Project B (₹ lakh) | -20 | 16 | 9 |\n\nThe crossover (Fisher's) rate at which both projects have the same NPV is:",
+      "explanation": {
+        "steps": [
+          "Incremental flows (A − B): year 1 = -12, year 2 = +15",
+          "Set -12/(1 + r) + 15/(1 + r)² = 0 → 1 + r = 15/12 → r = 25%",
+          "For reference: IRR(A) = 20%, IRR(B) = 18.10%."
+        ],
+        "formula_used": "Crossover rate = IRR of incremental cash flows",
+        "trap": "The Fisher rate is not derived from the two IRRs."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "25%",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "19.05%",
+          "is_correct": false,
+          "error": "simple average of the two IRRs",
+          "label": "B"
+        },
+        {
+          "text": "18.10%",
+          "is_correct": false,
+          "error": "IRR of the lower-IRR project taken as the crossover rate",
+          "label": "C"
+        },
+        {
+          "text": "20%",
+          "is_correct": false,
+          "error": "IRR of the higher-IRR project taken as the crossover rate",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-031",
+      "subject": "finance",
+      "microtopic_slug": "fin-npv-vs-irr-conflict-and-capital-rationing-70c6c5e7",
+      "microtopic_name": "NPV vs IRR conflict and capital rationing",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Capital available this year is limited to ₹50 lakh. All projects are divisible and independent.\n\n| Project | Outlay (₹ lakh) | NPV (₹ lakh) |\n|---|---:|---:|\n| P | 20 | 6.0 |\n| Q | 15 | 6.0 |\n| R | 25 | 7.0 |\n| S | 10 | 2.5 |\n\nThe maximum total NPV achievable is:",
+      "explanation": {
+        "steps": [
+          "PI = 1 + NPV/Outlay: P 1.30, Q 1.40, R 1.28, S 1.25 → rank Q, P, R, S",
+          "Q (₹15 lakh) + P (₹20 lakh) = ₹35 lakh; balance ₹15 lakh → 15/25 of R",
+          "NPV = 6.0 + 6.0 + 0.6 × 7.0 = ₹16.20 lakh"
+        ],
+        "formula_used": "Divisible rationing: rank by PI (NPV per ₹ of outlay)",
+        "trap": "With divisibility, fractional projects fill the budget exactly."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹15.90 lakh",
+          "is_correct": false,
+          "error": "projects ranked by smallest outlay",
+          "label": "A"
+        },
+        {
+          "text": "₹15.00 lakh",
+          "is_correct": false,
+          "error": "projects ranked by absolute NPV",
+          "label": "B"
+        },
+        {
+          "text": "₹16.20 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹15.50 lakh",
+          "is_correct": false,
+          "error": "projects treated as indivisible",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-032",
+      "subject": "finance",
+      "microtopic_slug": "fin-npv-vs-irr-conflict-and-capital-rationing-70c6c5e7",
+      "microtopic_name": "NPV vs IRR conflict and capital rationing",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Kshitij Infra Ltd has ₹50 lakh for capital projects this year. The projects are independent and indivisible; unused funds earn nothing extra.\n\n| Project | Outlay (₹ lakh) | NPV (₹ lakh) | PI |\n|---|---:|---:|---:|\n| A | 35 | 12.6 | 1.36 |\n| B | 20 | 6.8 | 1.34 |\n| C | 30 | 9.9 | 1.33 |\n| D | 15 | 3.9 | 1.26 |\n| E | 10 | 3.0 | 1.30 |\n\nWhich selection maximises NPV?",
+      "explanation": {
+        "steps": [
+          "With indivisible projects PI ranking can leave funds idle; test feasible combinations.",
+          "A + E = 45 → 15.6; A + D = 50 → 16.5; B + C = 50 → 16.7; B + D + E = 45 → 13.7; C + D = 45 → 13.8",
+          "Best feasible combination: B and C — NPV ₹16.70 lakh"
+        ],
+        "formula_used": "Indivisible rationing: maximise total NPV over feasible combinations",
+        "trap": "The highest-PI project (A) is not in the optimal set."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "A and D — NPV ₹16.50 lakh",
+          "is_correct": false,
+          "error": "projects picked in order of absolute NPV",
+          "label": "A"
+        },
+        {
+          "text": "B and C — NPV ₹16.70 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "B, D and E — NPV ₹13.70 lakh",
+          "is_correct": false,
+          "error": "cheapest projects picked first",
+          "label": "C"
+        },
+        {
+          "text": "A and E — NPV ₹15.60 lakh",
+          "is_correct": false,
+          "error": "PI ranking applied greedily to indivisible projects, leaving ₹5 lakh idle",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-033",
+      "subject": "finance",
+      "microtopic_slug": "fin-npv-vs-irr-conflict-and-capital-rationing-70c6c5e7",
+      "microtopic_name": "NPV vs IRR conflict and capital rationing",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Two mutually exclusive projects each have a 4-year life. Cost of capital is 12% (PVAF = 3.037).\n\n| Project | Outlay (₹ lakh) | Annual inflow (₹ lakh) |\n|---|---:|---:|\n| A | 10 | 4.2 |\n| B | 25 | 9.3 |\n\nWhich project should be chosen, and why?",
+      "explanation": {
+        "steps": [
+          "NPV A = 4.2 × 3.037 − 10 = ₹2.755 lakh; NPV B = 9.3 × 3.037 − 25 = ₹3.244 lakh",
+          "IRR A ≈ 24.5%; IRR B ≈ 18.0% — a scale conflict",
+          "Incremental (B − A): outlay ₹15 lakh, inflow ₹5.1 lakh → IRR ≈ 13.5% > 12%, so the extra investment adds value → choose B"
+        ],
+        "formula_used": "Incremental IRR > k ⇒ choose larger project (consistent with NPV)",
+        "trap": "Mutually exclusive: only one can be taken, so passing the hurdle is not enough."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "B, since the incremental IRR of about 13.5% exceeds 12%",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "A, since its PI of 1.28 is higher than B's PI of 1.13",
+          "is_correct": false,
+          "error": "PI ranking used for mutually exclusive projects without a budget limit",
+          "label": "B"
+        },
+        {
+          "text": "Either, since both have a positive NPV and an IRR above 12%",
+          "is_correct": false,
+          "error": "treats mutually exclusive projects as independent accept/reject decisions",
+          "label": "C"
+        },
+        {
+          "text": "A, since its IRR of about 24.5% exceeds B's IRR",
+          "is_correct": false,
+          "error": "ranks by IRR, ignoring scale",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-034",
+      "subject": "finance",
+      "microtopic_slug": "fin-npv-vs-irr-conflict-and-capital-rationing-70c6c5e7",
+      "microtopic_name": "NPV vs IRR conflict and capital rationing",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Consider the following statements:\n\n1. For two conventional mutually exclusive projects whose NPV profiles cross, the NPV and IRR rankings conflict only when the cost of capital is below the crossover rate.\n2. A project can have more than one IRR when its cash-flow stream changes sign more than once.\n3. Under single-period capital rationing with indivisible projects, ranking by profitability index always maximises total NPV.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "Above the Fisher rate, the project with higher IRR also has higher NPV; below it, rankings flip.",
+          "Non-conventional flows (e.g. −, +, −) can yield two or more IRRs.",
+          "PI ranking is exact only for divisible projects; with indivisible projects evaluate feasible combinations."
+        ],
+        "formula_used": "Conflict zone: k < crossover rate",
+        "trap": "Statement 3 is true only for divisible projects."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "1 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 2: multiple sign changes can give multiple IRRs (Descartes' rule)",
+          "label": "A"
+        },
+        {
+          "text": "1 and 2 only",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "2 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 1: above the crossover rate both methods favour the same project",
+          "label": "C"
+        },
+        {
+          "text": "All of 1, 2 and 3",
+          "is_correct": false,
+          "error": "wrongly accepts statement 3: indivisibility can leave funds idle, so combinations must be tested",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-035",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-under-risk-e5bb15ad",
+      "microtopic_name": "Capital budgeting under risk",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under the certainty-equivalent approach, the certainty-equivalent cash flows of a project are discounted at the:",
+      "explanation": {
+        "steps": [
+          "Risk is removed from the numerator by multiplying each cash flow by its CE coefficient (αt ≤ 1).",
+          "Discounting at a risk-adjusted rate as well would penalise risk twice, so the risk-free rate is used."
+        ],
+        "formula_used": "NPV = Σ αt CFt ÷ (1 + Rf)^t − I₀",
+        "trap": "Adjust risk in either the numerator or the denominator, never both."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Weighted average cost of capital",
+          "is_correct": false,
+          "error": "WACC embeds a risk premium",
+          "label": "A"
+        },
+        {
+          "text": "Risk-free rate of return",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "Project's internal rate of return",
+          "is_correct": false,
+          "error": "IRR is an output, not a discount rate",
+          "label": "C"
+        },
+        {
+          "text": "Risk-adjusted discount rate",
+          "is_correct": false,
+          "error": "double-counts risk",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-036",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-under-risk-e5bb15ad",
+      "microtopic_name": "Capital budgeting under risk",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A project costs ₹10 lakh and yields ₹4 lakh a year for 4 years. The risk-free rate is 8%, the firm's WACC is 12%, and management adds a risk premium of 6% over the risk-free rate for projects of this class. PVAF (4 years): 6% = 3.465, 8% = 3.312, 12% = 3.037, 14% = 2.914. The NPV using the risk-adjusted discount rate is:",
+      "explanation": {
+        "steps": [
+          "RADR = 8% + 6% = 14%",
+          "NPV = 4 × 2.914 − 10 = ₹1.656 lakh"
+        ],
+        "formula_used": "RADR = Rf + Risk premium",
+        "trap": "The premium is added to Rf, not to WACC and not used alone."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹1.656 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹3.248 lakh",
+          "is_correct": false,
+          "error": "risk-free rate used; premium ignored",
+          "label": "B"
+        },
+        {
+          "text": "₹3.860 lakh",
+          "is_correct": false,
+          "error": "risk premium alone used as the discount rate",
+          "label": "C"
+        },
+        {
+          "text": "₹2.148 lakh",
+          "is_correct": false,
+          "error": "WACC used instead of the risk-adjusted rate",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-037",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-under-risk-e5bb15ad",
+      "microtopic_name": "Capital budgeting under risk",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A project costs ₹6 lakh.\n\n| Year | 1 | 2 | 3 |\n|---|---:|---:|---:|\n| Expected cash flow (₹ lakh) | 3 | 3 | 2.5 |\n| Certainty-equivalent coefficient | 0.9 | 0.8 | 0.7 |\n| PVF at 6% (risk-free) | 0.943 | 0.89 | 0.84 |\n| PVF at 11% (WACC) | 0.901 | 0.812 | 0.731 |\n\nThe NPV under the certainty-equivalent approach is:",
+      "explanation": {
+        "steps": [
+          "CE cash flows = 2.70, 2.40, 1.75 (₹ lakh)",
+          "PV at 6% = 2.70×0.943 + 2.40×0.890 + 1.75×0.840 = ₹6.1521 lakh",
+          "NPV = 6.1521 − 6 = ₹15,210"
+        ],
+        "formula_used": "NPV = Σ αt CFt × PVF(Rf, t) − I₀",
+        "trap": "Once flows are made certain, discount at the risk-free rate."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹15,210",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹630",
+          "is_correct": false,
+          "error": "coefficients applied in reverse year order",
+          "label": "B"
+        },
+        {
+          "text": "−₹33,925",
+          "is_correct": false,
+          "error": "CE flows discounted at WACC (risk counted twice)",
+          "label": "C"
+        },
+        {
+          "text": "₹1,59,900",
+          "is_correct": false,
+          "error": "CE coefficients ignored",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-038",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-under-risk-e5bb15ad",
+      "microtopic_name": "Capital budgeting under risk",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A project costs ₹12 lakh and has a life of 3 years. The annual cash inflow (same in each year) follows this distribution:\n\n| Annual cash inflow (₹ lakh) | Probability |\n|---|---:|\n| 4 | 0.3 |\n| 5 | 0.5 |\n| 8 | 0.2 |\n\nAt a discount rate of 10% (PVAF = 2.487), the expected NPV is:",
+      "explanation": {
+        "steps": [
+          "Expected annual inflow = 4×0.3 + 5×0.5 + 8×0.2 = ₹5.30 lakh",
+          "ENPV = 5.30 × 2.487 − 12 = ₹1.181 lakh"
+        ],
+        "formula_used": "ENPV = Σ E(CFt) × PVFt − I₀",
+        "trap": "Weight by probabilities before discounting."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹0.435 lakh",
+          "is_correct": false,
+          "error": "most likely outcome used instead of the expected value",
+          "label": "A"
+        },
+        {
+          "text": "₹2.093 lakh",
+          "is_correct": false,
+          "error": "simple average of outcomes; probabilities ignored",
+          "label": "B"
+        },
+        {
+          "text": "₹1.181 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹3.900 lakh",
+          "is_correct": false,
+          "error": "expected inflows not discounted",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-039",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-under-risk-e5bb15ad",
+      "microtopic_name": "Capital budgeting under risk",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Jivika Appliances Ltd: outlay ₹20 lakh; annual sales 10,000 units at ₹500; variable cost ₹300 per unit; fixed cash cost ₹8 lakh a year; life 5 years; cost of capital 10% (PVAF = 3.791); ignore tax. Using sensitivity analysis, which variable is the most sensitive, and by how much can it change adversely before NPV becomes zero?",
+      "explanation": {
+        "steps": [
+          "Annual CF = 10,000 × 200 − 8 lakh = ₹12 lakh; NPV = 12 × 3.791 − 20 = ₹25.492 lakh",
+          "Price: NPV ÷ PV of revenue = 25.492 ÷ 189.55 = 13.45%",
+          "Variable cost: 25.492 ÷ 113.73 = 22.41%; volume: 25.492 ÷ 75.82 = 33.62%",
+          "Smallest tolerable change → selling price is most sensitive."
+        ],
+        "formula_used": "Sensitivity = NPV ÷ PV of the cash-flow element affected",
+        "trap": "Volume affects contribution, not revenue, so it is less sensitive than price."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Selling price: a fall of 50.98%",
+          "is_correct": false,
+          "error": "NPV compared with one year's undiscounted revenue",
+          "label": "A"
+        },
+        {
+          "text": "Selling price: a fall of 13.45%",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "Sales volume: a fall of 33.62%",
+          "is_correct": false,
+          "error": "volume sensitivity (less sensitive than price)",
+          "label": "C"
+        },
+        {
+          "text": "Variable cost: a rise of 22.41%",
+          "is_correct": false,
+          "error": "variable-cost sensitivity (less sensitive than price)",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-040",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-under-risk-e5bb15ad",
+      "microtopic_name": "Capital budgeting under risk",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Two projects have the following NPV distributions:\n\n| NPV of X (₹ lakh) | Probability | NPV of Y (₹ lakh) | Probability  |\n|---|---:|---:|---:|\n| 2 | 0.2 | 4 | 0.3 |\n| 5 | 0.5 | 6 | 0.4 |\n| 9 | 0.3 | 8 | 0.3 |\n\nThe coefficient of variation of project X is closest to (Y's is 0.26):",
+      "explanation": {
+        "steps": [
+          "E(NPV X) = 0.4 + 2.5 + 2.7 = ₹5.60 lakh",
+          "σ = √[0.2(2 − 5.6)² + 0.5(5 − 5.6)² + 0.3(9 − 5.6)²] = √6.24 = 2.498",
+          "CV = 2.498 ÷ 5.60 = 0.45 — higher than Y's 0.26, so X is riskier per unit of expected NPV"
+        ],
+        "formula_used": "CV = σ ÷ E(NPV)",
+        "trap": "Use probability weights for both the mean and the variance."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "2.24",
+          "is_correct": false,
+          "error": "expected NPV divided by standard deviation (inverted)",
+          "label": "A"
+        },
+        {
+          "text": "1.11",
+          "is_correct": false,
+          "error": "variance divided by expected NPV",
+          "label": "B"
+        },
+        {
+          "text": "0.54",
+          "is_correct": false,
+          "error": "unweighted mean and standard deviation; probabilities ignored",
+          "label": "C"
+        },
+        {
+          "text": "0.45",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-041",
+      "subject": "finance",
+      "microtopic_slug": "fin-leverage-operating-financial-and-combined-713084e6",
+      "microtopic_name": "Leverage — operating, financial and combined",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Operating leverage of a firm arises because of the presence of:",
+      "explanation": {
+        "steps": [
+          "Fixed operating costs do not change with output, so a given % change in sales causes a larger % change in EBIT.",
+          "DOL = Contribution ÷ EBIT; it exceeds 1 only when fixed operating costs exist."
+        ],
+        "formula_used": "DOL = %ΔEBIT ÷ %ΔSales = C ÷ EBIT",
+        "trap": "Interest and preference dividend drive financial, not operating, leverage."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Fixed financial charges such as interest",
+          "is_correct": false,
+          "error": "that causes financial leverage",
+          "label": "A"
+        },
+        {
+          "text": "Variable costs that rise in line with sales",
+          "is_correct": false,
+          "error": "variable costs do not magnify EBIT",
+          "label": "B"
+        },
+        {
+          "text": "Fixed operating costs in its cost structure",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Preference dividend payable out of profits",
+          "is_correct": false,
+          "error": "a fixed financial charge, not operating",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-042",
+      "subject": "finance",
+      "microtopic_slug": "fin-leverage-operating-financial-and-combined-713084e6",
+      "microtopic_name": "Leverage — operating, financial and combined",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Extract for Ananta Foods Ltd:\n\n| Particulars | ₹ lakh |\n|---|---:|\n| Sales | 50 |\n| Variable cost | 30 |\n| Fixed operating cost | 12 |\n| Interest | 3 |\n\nThe degree of combined leverage is:",
+      "explanation": {
+        "steps": [
+          "Contribution = 20; EBIT = 8; EBT = 5",
+          "DOL = 20/8 = 2.50; DFL = 8/5 = 1.60",
+          "DCL = 2.50 × 1.60 = 4.00 (= Contribution ÷ EBT = 20/5)"
+        ],
+        "formula_used": "DCL = DOL × DFL = C ÷ EBT",
+        "trap": "Leverages multiply; they do not add."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "1.56",
+          "is_correct": false,
+          "error": "DOL divided by DFL",
+          "label": "A"
+        },
+        {
+          "text": "6.25",
+          "is_correct": false,
+          "error": "contribution ÷ EBIT used for DFL as well",
+          "label": "B"
+        },
+        {
+          "text": "4.00",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "4.10",
+          "is_correct": false,
+          "error": "DOL and DFL added instead of multiplied",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-043",
+      "subject": "finance",
+      "microtopic_slug": "fin-leverage-operating-financial-and-combined-713084e6",
+      "microtopic_name": "Leverage — operating, financial and combined",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A company has a degree of operating leverage of 2.2 and a degree of financial leverage of 1.5. If sales rise by 12%, EPS will rise by:",
+      "explanation": {
+        "steps": [
+          "DCL = 2.2 × 1.5 = 3.3",
+          "%ΔEPS = 3.3 × 12% = 39.6%"
+        ],
+        "formula_used": "%ΔEPS = DCL × %ΔSales",
+        "trap": "DFL links %ΔEBIT (not %ΔSales) to %ΔEPS."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "18.0%",
+          "is_correct": false,
+          "error": "only financial leverage applied",
+          "label": "A"
+        },
+        {
+          "text": "44.4%",
+          "is_correct": false,
+          "error": "DOL and DFL added",
+          "label": "B"
+        },
+        {
+          "text": "26.4%",
+          "is_correct": false,
+          "error": "only operating leverage applied",
+          "label": "C"
+        },
+        {
+          "text": "39.6%",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-044",
+      "subject": "finance",
+      "microtopic_slug": "fin-leverage-operating-financial-and-combined-713084e6",
+      "microtopic_name": "Leverage — operating, financial and combined",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Data for Bhavya Plastics Ltd:\n\n| Particulars | Data |\n|---|---:|\n| Sales | 4 lakh units at ₹20 |\n| Variable cost | ₹12 per unit |\n| Fixed operating cost | ₹18 lakh |\n| 10% debentures | ₹40 lakh |\n| Preference dividend | ₹3 lakh |\n| Tax rate | 25% |\n\nThe degree of financial leverage is:",
+      "explanation": {
+        "steps": [
+          "Contribution = 4 × 8 = ₹32 lakh; EBIT = 32 − 18 = ₹14 lakh",
+          "Interest = ₹4 lakh; EBT = ₹10 lakh; pre-tax equivalent of preference dividend = 3/0.75 = ₹4 lakh",
+          "DFL = 14 ÷ (10 − 4) = 2.33"
+        ],
+        "formula_used": "DFL = EBIT ÷ [EBIT − I − Dp/(1 − t)]",
+        "trap": "Preference dividend is paid from post-tax profit, so gross it up."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "2.33",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "2.00",
+          "is_correct": false,
+          "error": "preference dividend deducted without grossing up for tax",
+          "label": "B"
+        },
+        {
+          "text": "1.40",
+          "is_correct": false,
+          "error": "preference dividend ignored",
+          "label": "C"
+        },
+        {
+          "text": "1.81",
+          "is_correct": false,
+          "error": "preference dividend multiplied by (1 − t) instead of divided",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-045",
+      "subject": "finance",
+      "microtopic_slug": "fin-leverage-operating-financial-and-combined-713084e6",
+      "microtopic_name": "Leverage — operating, financial and combined",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Kanak Metals Ltd has a degree of operating leverage of 3, a degree of financial leverage of 2, interest of ₹6 lakh and a P/V ratio of 40%. It has no preference capital. Its fixed operating cost is:",
+      "explanation": {
+        "steps": [
+          "DFL = EBIT/(EBIT − I) → 2 = EBIT/(EBIT − 6) → EBIT = ₹12 lakh",
+          "DOL = C/EBIT → C = 3 × 12 = ₹36 lakh; sales = 36/0.40 = ₹90 lakh",
+          "Fixed cost = C − EBIT = 36 − 12 = ₹24 lakh"
+        ],
+        "formula_used": "EBIT = I × DFL/(DFL − 1); FC = C − EBIT",
+        "trap": "Work back from DFL first to find EBIT."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹30 lakh",
+          "is_correct": false,
+          "error": "interest deducted from contribution instead of EBIT",
+          "label": "A"
+        },
+        {
+          "text": "₹54 lakh",
+          "is_correct": false,
+          "error": "variable cost (sales − contribution) reported",
+          "label": "B"
+        },
+        {
+          "text": "₹36 lakh",
+          "is_correct": false,
+          "error": "contribution reported as fixed cost",
+          "label": "C"
+        },
+        {
+          "text": "₹24 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-046",
+      "subject": "finance",
+      "microtopic_slug": "fin-ebit-eps-analysis-and-financial-indifference-point-22346f43",
+      "microtopic_name": "EBIT–EPS analysis and financial indifference point",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "The financial break-even point of a firm with debt and preference capital is the level of EBIT at which:",
+      "explanation": {
+        "steps": [
+          "Financial BEP = I + Dp/(1 − t).",
+          "At this EBIT, nothing is left for equity holders, so EPS = 0."
+        ],
+        "formula_used": "Financial BEP = I + Dp ÷ (1 − t)",
+        "trap": "Do not confuse with the indifference point or the operating BEP."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Contribution exactly equals the fixed operating costs of the firm",
+          "is_correct": false,
+          "error": "that is the operating break-even point",
+          "label": "A"
+        },
+        {
+          "text": "EPS is identical under two alternative financing plans being compared",
+          "is_correct": false,
+          "error": "that is the indifference point",
+          "label": "B"
+        },
+        {
+          "text": "EBIT just covers interest, with preference dividend left out",
+          "is_correct": false,
+          "error": "omits the grossed-up preference dividend",
+          "label": "C"
+        },
+        {
+          "text": "EPS is zero — EBIT just covers interest and pre-tax preference dividend",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-047",
+      "subject": "finance",
+      "microtopic_slug": "fin-ebit-eps-analysis-and-financial-indifference-point-22346f43",
+      "microtopic_name": "EBIT–EPS analysis and financial indifference point",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "A new company needs ₹50 lakh. Plan A: all equity — 5 lakh shares of ₹10. Plan B: 2 lakh shares of ₹10 plus ₹30 lakh of 10% debentures. Tax rate 25%. The EBIT at which EPS is the same under both plans is:",
+      "explanation": {
+        "steps": [
+          "EBIT(1 − t)/5 = (EBIT − 3)(1 − t)/2",
+          "2 EBIT = 5 EBIT − 15 → EBIT = ₹5 lakh",
+          "Check: EPS = 5 × 0.75/5 = ₹0.75 under both plans"
+        ],
+        "formula_used": "(EBIT − I₁)(1 − t)/N₁ = (EBIT − I₂)(1 − t)/N₂",
+        "trap": "Interest is deducted pre-tax; it is not grossed up."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹8.33 lakh",
+          "is_correct": false,
+          "error": "10% interest charged on the entire ₹50 lakh",
+          "label": "A"
+        },
+        {
+          "text": "₹3.00 lakh",
+          "is_correct": false,
+          "error": "financial break-even point of Plan B reported",
+          "label": "B"
+        },
+        {
+          "text": "₹6.67 lakh",
+          "is_correct": false,
+          "error": "interest grossed up for tax as if it were preference dividend",
+          "label": "C"
+        },
+        {
+          "text": "₹5.00 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-048",
+      "subject": "finance",
+      "microtopic_slug": "fin-ebit-eps-analysis-and-financial-indifference-point-22346f43",
+      "microtopic_name": "EBIT–EPS analysis and financial indifference point",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Under a proposed plan, Lakshya Retail Ltd will have 5 lakh equity shares and ₹30 lakh of 12% preference shares, and no debt. Expected EBIT is ₹12 lakh and the tax rate is 25%. EPS under this plan is:",
+      "explanation": {
+        "steps": [
+          "PAT = 12 × 0.75 = ₹9.00 lakh",
+          "Less preference dividend ₹3.60 lakh → ₹5.40 lakh",
+          "EPS = 5.40 ÷ 5 = ₹1.08"
+        ],
+        "formula_used": "EPS = [(EBIT − I)(1 − t) − Dp] ÷ N",
+        "trap": "Preference dividend comes out of PAT, at face amount."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹0.84",
+          "is_correct": false,
+          "error": "preference dividend grossed up and deducted from profit after tax",
+          "label": "A"
+        },
+        {
+          "text": "₹1.80",
+          "is_correct": false,
+          "error": "preference dividend ignored",
+          "label": "B"
+        },
+        {
+          "text": "₹1.08",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹1.26",
+          "is_correct": false,
+          "error": "preference dividend deducted before tax as if it were interest",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-049",
+      "subject": "finance",
+      "microtopic_slug": "fin-ebit-eps-analysis-and-financial-indifference-point-22346f43",
+      "microtopic_name": "EBIT–EPS analysis and financial indifference point",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Charvi Textiles Ltd has 4 lakh equity shares and ₹15 lakh of 10% debentures. It needs ₹20 lakh more and is choosing between (i) issuing 2 lakh equity shares at ₹10, and (ii) issuing ₹20 lakh of 12% preference shares. Tax rate 30%. The EBIT at which EPS is the same under both options is:",
+      "explanation": {
+        "steps": [
+          "Equity option: N = 6 lakh; preference option: N = 4 lakh, Dp = ₹2.4 lakh; interest ₹1.5 lakh in both",
+          "(EBIT − 1.5)(0.7)/6 = [(EBIT − 1.5)(0.7) − 2.4]/4",
+          "0.7(EBIT − 1.5) × (1/4 − 1/6) = 0.6 → EBIT − 1.5 = 10.2857 → EBIT = ₹11.79 lakh"
+        ],
+        "formula_used": "(EBIT − I)(1 − t)/N₁ = [(EBIT − I)(1 − t) − Dp]/N₂",
+        "trap": "Existing interest appears in both plans and shifts the point."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹10.29 lakh",
+          "is_correct": false,
+          "error": "existing debenture interest ignored",
+          "label": "A"
+        },
+        {
+          "text": "₹11.79 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹4.93 lakh",
+          "is_correct": false,
+          "error": "financial break-even point of the preference option reported",
+          "label": "C"
+        },
+        {
+          "text": "₹8.70 lakh",
+          "is_correct": false,
+          "error": "preference dividend deducted before tax like interest",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-050",
+      "subject": "finance",
+      "microtopic_slug": "fin-ebit-eps-analysis-and-financial-indifference-point-22346f43",
+      "microtopic_name": "EBIT–EPS analysis and financial indifference point",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Suvidha Logistics Ltd, a new company, will raise ₹60 lakh under one of these plans:\n\n| Plan | Equity (₹10 shares) | Debt | Preference |\n|---|---:|---:|---:|\n| A | ₹60 lakh | — | — |\n| B | ₹30 lakh | ₹30 lakh at 12% | — |\n| C | ₹30 lakh | — | ₹30 lakh at 11% |\n\nExpected EBIT is ₹20 lakh; tax rate 25%. Which plan ranks second on EPS, and what is that plan's financial break-even point?",
+      "explanation": {
+        "steps": [
+          "EPS: A = ₹2.50; B = ₹4.10; C = ₹3.90",
+          "Ranking: B > C > A → second is Plan C",
+          "Financial BEP (Plan C) = 3.3/0.75 = ₹4.40 lakh"
+        ],
+        "formula_used": "Financial BEP = I + Dp/(1 − t)",
+        "trap": "Preference dividend must be grossed up to a pre-tax EBIT equivalent."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "Plan C; ₹3.30 lakh",
+          "is_correct": false,
+          "error": "preference dividend not grossed up for tax",
+          "label": "A"
+        },
+        {
+          "text": "Plan C; ₹4.40 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "Plan B; ₹3.60 lakh",
+          "is_correct": false,
+          "error": "top-ranked plan and its break-even reported",
+          "label": "C"
+        },
+        {
+          "text": "Plan C; ₹2.47 lakh",
+          "is_correct": false,
+          "error": "preference dividend multiplied by (1 − t)",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-051",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-structure-theories-ni-noi-traditional-and-mm-1e092ca9",
+      "microtopic_name": "Capital structure theories — NI, NOI, traditional and MM",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under the Net Operating Income (NOI) approach, as a firm substitutes debt for equity, which of the following remains constant?",
+      "explanation": {
+        "steps": [
+          "NOI: V = EBIT ÷ Ko with Ko constant, so V is independent of leverage.",
+          "Cheaper debt is exactly offset by a rising Ke, so capital structure is irrelevant."
+        ],
+        "formula_used": "V = EBIT ÷ Ko;  Ke = Ko + (Ko − Kd)D/E",
+        "trap": "Under the NI approach, by contrast, Ke and Kd are constant and Ko falls."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "The cost of equity (Ke) and the market price per share",
+          "is_correct": false,
+          "error": "Ke rises; only V and Ko are constant",
+          "label": "A"
+        },
+        {
+          "text": "The equity capitalisation rate and the overall cost of capital",
+          "is_correct": false,
+          "error": "Ke is not constant under NOI",
+          "label": "B"
+        },
+        {
+          "text": "The cost of equity (Ke) and the value of equity",
+          "is_correct": false,
+          "error": "Ke rises with leverage under NOI",
+          "label": "C"
+        },
+        {
+          "text": "The overall cost of capital (Ko) and the value of the firm",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-052",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-structure-theories-ni-noi-traditional-and-mm-1e092ca9",
+      "microtopic_name": "Capital structure theories — NI, NOI, traditional and MM",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Rishabh Engineering Ltd has EBIT of ₹10 lakh and ₹30 lakh of 10% debt. Its equity capitalisation rate is 15%. Under the Net Income approach (no taxes), its overall cost of capital is:",
+      "explanation": {
+        "steps": [
+          "Net income = 10 − 3 = ₹7 lakh; E = 7/0.15 = ₹46.67 lakh",
+          "V = 46.67 + 30 = ₹76.67 lakh",
+          "Ko = 10 ÷ 76.67 = 13.04%"
+        ],
+        "formula_used": "E = (EBIT − I)/Ke;  Ko = EBIT/V",
+        "trap": "Equity holders capitalise net income, not EBIT."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "13.04%",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "10.34%",
+          "is_correct": false,
+          "error": "value of equity computed by capitalising EBIT instead of net income",
+          "label": "B"
+        },
+        {
+          "text": "12.50%",
+          "is_correct": false,
+          "error": "simple average of Ke and Kd",
+          "label": "C"
+        },
+        {
+          "text": "15%",
+          "is_correct": false,
+          "error": "equity capitalisation rate reported as Ko",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-053",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-structure-theories-ni-noi-traditional-and-mm-1e092ca9",
+      "microtopic_name": "Capital structure theories — NI, NOI, traditional and MM",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Firms U and L are identical except that L has ₹40 lakh of 8% debt; U is all-equity. Both earn EBIT of ₹12 lakh and U's cost of equity is 12%. Assuming Modigliani–Miller conditions without taxes, L's cost of equity is:",
+      "explanation": {
+        "steps": [
+          "MM (no tax): VL = VU = 12/0.12 = ₹100 lakh; EL = 100 − 40 = ₹60 lakh",
+          "KeL = Ku + (Ku − Kd) × D/E = 12% + 4% × 40/60 = 14.67%",
+          "Check: (EBIT − I)/E = 8.8/60 = 14.67%"
+        ],
+        "formula_used": "KeL = Ku + (Ku − Kd)(D/E)",
+        "trap": "The risk premium scales with D/E, not D/V."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "8.80%",
+          "is_correct": false,
+          "error": "net income divided by total firm value",
+          "label": "A"
+        },
+        {
+          "text": "12%",
+          "is_correct": false,
+          "error": "cost of equity assumed unchanged by leverage",
+          "label": "B"
+        },
+        {
+          "text": "13.60%",
+          "is_correct": false,
+          "error": "debt ÷ total value used instead of debt ÷ equity",
+          "label": "C"
+        },
+        {
+          "text": "14.67%",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-054",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-structure-theories-ni-noi-traditional-and-mm-1e092ca9",
+      "microtopic_name": "Capital structure theories — NI, NOI, traditional and MM",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Two firms are identical in every respect except capital structure (ignore taxes):\n\n| Particulars | Firm U | Firm L |\n|---|---:|---:|\n| EBIT (₹ lakh) | 20 | 20 |\n| 10% debt (₹ lakh) | — | 50 |\n| Equity capitalisation rate | 12.5% | 12% |\n\nAn investor owns 10% of L's equity. Under MM arbitrage, he sells his L shares, borrows personally at 10% in proportion to his share of L's debt, and invests the entire amount in U's shares. The increase in his annual income is:",
+      "explanation": {
+        "steps": [
+          "VU = 20/0.125 = ₹160 lakh; EL = (20 − 5)/0.12 = ₹125 lakh; VL = ₹175 lakh → L is overvalued",
+          "Sell 10% of L = ₹12.50 lakh (income ₹1.50 lakh); borrow ₹5 lakh; invest ₹17.50 lakh in U",
+          "New income = 17.50/160 × 20 − 5 × 10% = ₹1.6875 lakh",
+          "Gain = 1.6875 − 1.50 = ₹0.1875 lakh = ₹18,750"
+        ],
+        "formula_used": "Arbitrage: replicate L's financial risk with personal leverage in U",
+        "trap": "Personal borrowing is what keeps the financial risk identical."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹1,50,000",
+          "is_correct": false,
+          "error": "cash saved by buying the same 10% of U reported as income",
+          "label": "A"
+        },
+        {
+          "text": "₹18,750",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹68,750",
+          "is_correct": false,
+          "error": "interest on the personal borrowing not deducted",
+          "label": "C"
+        },
+        {
+          "text": "₹6,250",
+          "is_correct": false,
+          "error": "no personal borrowing (homemade leverage) undertaken",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-055",
+      "subject": "finance",
+      "microtopic_slug": "fin-dividend-policy-models-walter-gordon-and-mm-c3d39d63",
+      "microtopic_name": "Dividend policy models — Walter, Gordon and MM",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under Walter's model, for a growth firm whose return on investment (r) exceeds its cost of equity (k), the optimum dividend payout ratio is:",
+      "explanation": {
+        "steps": [
+          "Walter: P = [D + (r/k)(E − D)] ÷ k.",
+          "When r > k, each rupee retained adds more than a rupee to price, so price is maximised at D = 0."
+        ],
+        "formula_used": "P = [D + (r/k)(E − D)] ÷ k",
+        "trap": "Match the payout rule to the firm type: growth (0%), normal (irrelevant), declining (100%)."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "100% — all earnings should be distributed",
+          "is_correct": false,
+          "error": "optimal for a declining firm (r < k)",
+          "label": "A"
+        },
+        {
+          "text": "Irrelevant — every payout gives the same price",
+          "is_correct": false,
+          "error": "true only for a normal firm (r = k)",
+          "label": "B"
+        },
+        {
+          "text": "Zero — all earnings should be retained",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Equal to the ratio of k to r for the firm",
+          "is_correct": false,
+          "error": "no such rule in Walter's model",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-056",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-npv-irr-pi-and-mirr-f6de825a",
+      "microtopic_name": "Capital budgeting — NPV, IRR, PI and MIRR",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "FINC-C1-ashvik",
+      "stem": "**Case — Ashvik Components Ltd.** The company is appraising a new precision-parts line. Data:\n\n| Item | Data |\n|---|---:|\n| Machine cost / installation | ₹48 lakh / ₹2 lakh (installation is capitalised) |\n| Life; depreciation | 5 years; straight-line on capitalised cost less estimated salvage of ₹5 lakh |\n| Actual sale value at end of year 5 | ₹8 lakh; profit over book value taxed at 25% |\n| Working capital | ₹6 lakh at start, fully released at end of year 5 |\n| Selling price / variable cost | ₹400 / ₹250 per unit |\n| Incremental fixed cash cost | ₹12 lakh a year |\n| Tax rate; cost of capital | 25%; 12% |\n\n| Year | 1 | 2 | 3 | 4 | 5 |\n|---|---:|---:|---:|---:|---:|\n| Units sold | 20,000 | 24,000 | 28,000 | 28,000 | 22,000 |\n| PVF at 12% | 0.893 | 0.797 | 0.712 | 0.636 | 0.567 |\n\nThe cash flow after tax from operations in year 2 is:",
+      "explanation": {
+        "steps": [
+          "Depreciation = (48 + 2 − 5) ÷ 5 = ₹9 lakh",
+          "Year 2: contribution = 24,000 × ₹150 = ₹36 lakh; EBDT = 36 − 12 = ₹24 lakh",
+          "CFAT = (24 − 9) × 0.75 + 9 = ₹20.25 lakh"
+        ],
+        "formula_used": "CFAT = (EBDT − Dep)(1 − t) + Dep",
+        "trap": "Installation is capitalised and depreciated."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹11.25 lakh",
+          "is_correct": false,
+          "error": "profit after tax; depreciation not added back",
+          "label": "A"
+        },
+        {
+          "text": "₹18.00 lakh",
+          "is_correct": false,
+          "error": "tax charged on EBDT; depreciation tax shield ignored",
+          "label": "B"
+        },
+        {
+          "text": "₹20.15 lakh",
+          "is_correct": false,
+          "error": "installation cost left out of the depreciable base",
+          "label": "C"
+        },
+        {
+          "text": "₹20.25 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-057",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-npv-irr-pi-and-mirr-f6de825a",
+      "microtopic_name": "Capital budgeting — NPV, IRR, PI and MIRR",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "FINC-C1-ashvik",
+      "stem": "**Case — Ashvik Components Ltd.** The company is appraising a new precision-parts line. Data:\n\n| Item | Data |\n|---|---:|\n| Machine cost / installation | ₹48 lakh / ₹2 lakh (installation is capitalised) |\n| Life; depreciation | 5 years; straight-line on capitalised cost less estimated salvage of ₹5 lakh |\n| Actual sale value at end of year 5 | ₹8 lakh; profit over book value taxed at 25% |\n| Working capital | ₹6 lakh at start, fully released at end of year 5 |\n| Selling price / variable cost | ₹400 / ₹250 per unit |\n| Incremental fixed cash cost | ₹12 lakh a year |\n| Tax rate; cost of capital | 25%; 12% |\n\n| Year | 1 | 2 | 3 | 4 | 5 |\n|---|---:|---:|---:|---:|---:|\n| Units sold | 20,000 | 24,000 | 28,000 | 28,000 | 22,000 |\n| PVF at 12% | 0.893 | 0.797 | 0.712 | 0.636 | 0.567 |\n\nThe terminal (non-operating) cash inflow at the end of year 5 is:",
+      "explanation": {
+        "steps": [
+          "Book value at end = estimated salvage = ₹5 lakh; profit on sale = 8 − 5 = ₹3 lakh",
+          "Tax = 25% × 3 = ₹0.75 lakh → net salvage = ₹7.25 lakh",
+          "Terminal inflow = 7.25 + WC 6 = ₹13.25 lakh"
+        ],
+        "formula_used": "Terminal CF = Sale value − t(Sale value − BV) + WC",
+        "trap": "Only the gain over book value is taxed."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹13.25 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "₹14.00 lakh",
+          "is_correct": false,
+          "error": "tax on profit on sale ignored",
+          "label": "B"
+        },
+        {
+          "text": "₹12.00 lakh",
+          "is_correct": false,
+          "error": "tax charged on the entire sale value instead of the profit over book value",
+          "label": "C"
+        },
+        {
+          "text": "₹7.25 lakh",
+          "is_correct": false,
+          "error": "release of working capital omitted",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-058",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-npv-irr-pi-and-mirr-f6de825a",
+      "microtopic_name": "Capital budgeting — NPV, IRR, PI and MIRR",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "FINC-C1-ashvik",
+      "stem": "**Case — Ashvik Components Ltd.** The company is appraising a new precision-parts line. Data:\n\n| Item | Data |\n|---|---:|\n| Machine cost / installation | ₹48 lakh / ₹2 lakh (installation is capitalised) |\n| Life; depreciation | 5 years; straight-line on capitalised cost less estimated salvage of ₹5 lakh |\n| Actual sale value at end of year 5 | ₹8 lakh; profit over book value taxed at 25% |\n| Working capital | ₹6 lakh at start, fully released at end of year 5 |\n| Selling price / variable cost | ₹400 / ₹250 per unit |\n| Incremental fixed cash cost | ₹12 lakh a year |\n| Tax rate; cost of capital | 25%; 12% |\n\n| Year | 1 | 2 | 3 | 4 | 5 |\n|---|---:|---:|---:|---:|---:|\n| Units sold | 20,000 | 24,000 | 28,000 | 28,000 | 22,000 |\n| PVF at 12% | 0.893 | 0.797 | 0.712 | 0.636 | 0.567 |\n\nThe NPV of the project is:",
+      "explanation": {
+        "steps": [
+          "CFAT (₹ lakh): 15.75, 20.25, 24.75, 24.75, 18.00; add terminal ₹13.25 lakh in year 5",
+          "PV of inflows = 15.75×0.893 + 20.25×0.797 + 24.75×0.712 + 24.75×0.636 + 31.25×0.567 = ₹81.286 lakh",
+          "Outlay = 50 + 6 = ₹56 lakh; NPV = ₹25.286 lakh"
+        ],
+        "formula_used": "NPV = Σ CFt × PVFt − (Capital cost + WC)",
+        "trap": "The outlay includes installation and working capital."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹27.88 lakh",
+          "is_correct": false,
+          "error": "working capital ignored at both ends",
+          "label": "A"
+        },
+        {
+          "text": "₹26.93 lakh",
+          "is_correct": false,
+          "error": "installation cost ignored in both the outlay and the depreciable base",
+          "label": "B"
+        },
+        {
+          "text": "₹25.29 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹17.77 lakh",
+          "is_correct": false,
+          "error": "terminal inflow (net salvage + working capital) omitted",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-059",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-budgeting-payback-and-discounted-payback-608f2476",
+      "microtopic_name": "Capital budgeting — payback and discounted payback",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "FINC-C1-ashvik",
+      "stem": "**Case — Ashvik Components Ltd.** The company is appraising a new precision-parts line. Data:\n\n| Item | Data |\n|---|---:|\n| Machine cost / installation | ₹48 lakh / ₹2 lakh (installation is capitalised) |\n| Life; depreciation | 5 years; straight-line on capitalised cost less estimated salvage of ₹5 lakh |\n| Actual sale value at end of year 5 | ₹8 lakh; profit over book value taxed at 25% |\n| Working capital | ₹6 lakh at start, fully released at end of year 5 |\n| Selling price / variable cost | ₹400 / ₹250 per unit |\n| Incremental fixed cash cost | ₹12 lakh a year |\n| Tax rate; cost of capital | 25%; 12% |\n\n| Year | 1 | 2 | 3 | 4 | 5 |\n|---|---:|---:|---:|---:|---:|\n| Units sold | 20,000 | 24,000 | 28,000 | 28,000 | 22,000 |\n| PVF at 12% | 0.893 | 0.797 | 0.712 | 0.636 | 0.567 |\n\nThe discounted payback period of the project is:",
+      "explanation": {
+        "steps": [
+          "Discounted inflows (₹ lakh): 14.065, 16.139, 17.622, 15.741, 17.719",
+          "Cumulative after 3 years = ₹47.826 lakh; balance = 56 − 47.826 = ₹8.174 lakh",
+          "DPB = 3 + 8.174/15.741 = 3.52 years"
+        ],
+        "formula_used": "DPB = Years before recovery + Unrecovered PV ÷ PV of next year's inflow",
+        "trap": "Working capital is part of the investment to be recovered."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "3.52 years",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "2.81 years",
+          "is_correct": false,
+          "error": "simple (undiscounted) payback",
+          "label": "B"
+        },
+        {
+          "text": "3.14 years",
+          "is_correct": false,
+          "error": "working capital excluded from the amount to be recovered",
+          "label": "C"
+        },
+        {
+          "text": "3.33 years",
+          "is_correct": false,
+          "error": "final fraction computed on the undiscounted year-4 cash flow",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-060",
+      "subject": "finance",
+      "microtopic_slug": "fin-leverage-operating-financial-and-combined-713084e6",
+      "microtopic_name": "Leverage — operating, financial and combined",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "FINC-C2-kavera",
+      "stem": "**Case — Kavera Foods Ltd.** Present capital: 20 lakh equity shares of ₹10 each, reserves ₹50 lakh and ₹100 lakh of 10% debentures. An expansion costing ₹150 lakh is planned. After expansion: sales ₹400 lakh, variable cost 60% of sales, fixed operating cost ₹70 lakh. Two financing plans are considered:\n\n| Plan | Instrument |\n|---|---:|\n| A | Equity shares issued at ₹25 (6 lakh shares); flotation cost ₹1 per share |\n| B | 12% debentures of ₹150 lakh |\n\nTax rate 25%. The dividend just paid is ₹2.00 per share, expected to grow at 7% a year; the current share price is ₹25.\n\nThe degree of combined leverage after expansion under Plan B is:",
+      "explanation": {
+        "steps": [
+          "Contribution = 400 × 40% = ₹160 lakh; EBIT = 160 − 70 = ₹90 lakh",
+          "Interest under Plan B = 10 + 18 = ₹28 lakh; EBT = ₹62 lakh",
+          "DCL = 160 ÷ 62 = 2.58 (DOL 1.78 × DFL 1.45)"
+        ],
+        "formula_used": "DCL = Contribution ÷ EBT",
+        "trap": "Existing debenture interest continues under both plans."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "2.58",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "2.00",
+          "is_correct": false,
+          "error": "Plan A's combined leverage (only existing interest)",
+          "label": "B"
+        },
+        {
+          "text": "2.22",
+          "is_correct": false,
+          "error": "only the new debenture interest deducted",
+          "label": "C"
+        },
+        {
+          "text": "3.23",
+          "is_correct": false,
+          "error": "DOL and DFL added instead of multiplied",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-061",
+      "subject": "finance",
+      "microtopic_slug": "fin-ebit-eps-analysis-and-financial-indifference-point-22346f43",
+      "microtopic_name": "EBIT–EPS analysis and financial indifference point",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "FINC-C2-kavera",
+      "stem": "**Case — Kavera Foods Ltd.** Present capital: 20 lakh equity shares of ₹10 each, reserves ₹50 lakh and ₹100 lakh of 10% debentures. An expansion costing ₹150 lakh is planned. After expansion: sales ₹400 lakh, variable cost 60% of sales, fixed operating cost ₹70 lakh. Two financing plans are considered:\n\n| Plan | Instrument |\n|---|---:|\n| A | Equity shares issued at ₹25 (6 lakh shares); flotation cost ₹1 per share |\n| B | 12% debentures of ₹150 lakh |\n\nTax rate 25%. The dividend just paid is ₹2.00 per share, expected to grow at 7% a year; the current share price is ₹25.\n\nThe EBIT at which EPS is the same under Plans A and B is:",
+      "explanation": {
+        "steps": [
+          "Plan A: N = 26 lakh, I = ₹10 lakh; Plan B: N = 20 lakh, I = ₹28 lakh",
+          "(EBIT − 10)(0.75)/26 = (EBIT − 28)(0.75)/20",
+          "20·EBIT − 200 = 26·EBIT − 728 → EBIT = ₹88 lakh"
+        ],
+        "formula_used": "(EBIT − I_A)/N_A = (EBIT − I_B)/N_B",
+        "trap": "Expected EBIT (₹90 lakh) is just above the point, so Plan B gives the higher EPS."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹44.67 lakh",
+          "is_correct": false,
+          "error": "existing interest deducted only under Plan A",
+          "label": "A"
+        },
+        {
+          "text": "₹88.00 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹78.00 lakh",
+          "is_correct": false,
+          "error": "existing debenture interest ignored in both plans",
+          "label": "C"
+        },
+        {
+          "text": "₹52.00 lakh",
+          "is_correct": false,
+          "error": "new shares assumed issued at par (15 lakh shares)",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-062",
+      "subject": "finance",
+      "microtopic_slug": "fin-cost-of-capital-debt-preference-and-equity-a02970f8",
+      "microtopic_name": "Cost of capital — debt, preference and equity",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "FINC-C2-kavera",
+      "stem": "**Case — Kavera Foods Ltd.** Present capital: 20 lakh equity shares of ₹10 each, reserves ₹50 lakh and ₹100 lakh of 10% debentures. An expansion costing ₹150 lakh is planned. After expansion: sales ₹400 lakh, variable cost 60% of sales, fixed operating cost ₹70 lakh. Two financing plans are considered:\n\n| Plan | Instrument |\n|---|---:|\n| A | Equity shares issued at ₹25 (6 lakh shares); flotation cost ₹1 per share |\n| B | 12% debentures of ₹150 lakh |\n\nTax rate 25%. The dividend just paid is ₹2.00 per share, expected to grow at 7% a year; the current share price is ₹25.\n\nThe cost of the new equity under Plan A is:",
+      "explanation": {
+        "steps": [
+          "D1 = 2.00 × 1.07 = ₹2.14; net proceeds = 25 − 1 = ₹24",
+          "Ke = 2.14/24 + 7% = 15.92%"
+        ],
+        "formula_used": "Ke(new) = D1 ÷ (P0 − f) + g",
+        "trap": "Flotation cost reduces the net proceeds per share."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "15.23%",
+          "is_correct": false,
+          "error": "flotation cost added to the price instead of deducted",
+          "label": "A"
+        },
+        {
+          "text": "15.56%",
+          "is_correct": false,
+          "error": "flotation cost ignored",
+          "label": "B"
+        },
+        {
+          "text": "15.33%",
+          "is_correct": false,
+          "error": "D0 used instead of D1",
+          "label": "C"
+        },
+        {
+          "text": "15.92%",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-063",
+      "subject": "finance",
+      "microtopic_slug": "fin-weighted-average-and-marginal-cost-of-capital-6b18c6d9",
+      "microtopic_name": "Weighted average and marginal cost of capital",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "FINC-C2-kavera",
+      "stem": "**Case — Kavera Foods Ltd.** Present capital: 20 lakh equity shares of ₹10 each, reserves ₹50 lakh and ₹100 lakh of 10% debentures. An expansion costing ₹150 lakh is planned. After expansion: sales ₹400 lakh, variable cost 60% of sales, fixed operating cost ₹70 lakh. Two financing plans are considered:\n\n| Plan | Instrument |\n|---|---:|\n| A | Equity shares issued at ₹25 (6 lakh shares); flotation cost ₹1 per share |\n| B | 12% debentures of ₹150 lakh |\n\nTax rate 25%. The dividend just paid is ₹2.00 per share, expected to grow at 7% a year; the current share price is ₹25.\n\nIf Plan B is adopted, the cost of equity is expected to rise to 16.5%. Using book-value weights, the WACC after expansion is:",
+      "explanation": {
+        "steps": [
+          "Equity (capital + reserves) = ₹250 lakh at 16.5%; old debentures ₹100 lakh at 10% × 0.75 = 7.5%; new ₹150 lakh at 12% × 0.75 = 9%",
+          "WACC = (250 × 16.5% + 100 × 7.5% + 150 × 9%) ÷ 500 = 12.45%"
+        ],
+        "formula_used": "WACC = Σ (BVᵢ × post-tax kᵢ) ÷ Σ BVᵢ",
+        "trap": "Each debt tranche keeps its own coupon."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "11.98%",
+          "is_correct": false,
+          "error": "pre-expansion cost of equity (from the dividend-growth model) used",
+          "label": "A"
+        },
+        {
+          "text": "13.85%",
+          "is_correct": false,
+          "error": "pre-tax cost of debentures used",
+          "label": "B"
+        },
+        {
+          "text": "12.75%",
+          "is_correct": false,
+          "error": "all debentures costed at the new 12% coupon",
+          "label": "C"
+        },
+        {
+          "text": "12.45%",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-064",
+      "subject": "finance",
+      "microtopic_slug": "fin-dividend-policy-models-walter-gordon-and-mm-c3d39d63",
+      "microtopic_name": "Dividend policy models — Walter, Gordon and MM",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "FINC-C3-meridian",
+      "stem": "**Case — Meridian Tools Ltd.** EPS ₹12; return on investment 18%; cost of equity 14%; 5 lakh equity shares; present payout ratio 40%; current market price ₹100. The company plans capital investment of ₹90 lakh next year and expects net income of ₹60 lakh.\n\nUnder Walter's model, the price per share at the present payout ratio is:",
+      "explanation": {
+        "steps": [
+          "D = 12 × 0.4 = ₹4.80; retained = ₹7.20",
+          "P = [4.80 + (0.18/0.14) × 7.20] ÷ 0.14 = ₹100.41"
+        ],
+        "formula_used": "P = [D + (r/k)(E − D)] ÷ k",
+        "trap": "r/k multiplies the retained part only."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹85.71",
+          "is_correct": false,
+          "error": "EPS ÷ k — treats payout as irrelevant",
+          "label": "A"
+        },
+        {
+          "text": "₹74.29",
+          "is_correct": false,
+          "error": "r and k interchanged in the retention term",
+          "label": "B"
+        },
+        {
+          "text": "₹100.41",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹78.10",
+          "is_correct": false,
+          "error": "capitalised at r instead of k",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-065",
+      "subject": "finance",
+      "microtopic_slug": "fin-dividend-policy-models-walter-gordon-and-mm-c3d39d63",
+      "microtopic_name": "Dividend policy models — Walter, Gordon and MM",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "FINC-C3-meridian",
+      "stem": "**Case — Meridian Tools Ltd.** EPS ₹12; return on investment 18%; cost of equity 14%; 5 lakh equity shares; present payout ratio 40%; current market price ₹100. The company plans capital investment of ₹90 lakh next year and expects net income of ₹60 lakh.\n\nUnder Walter's model, the optimum payout ratio and the corresponding price per share are:",
+      "explanation": {
+        "steps": [
+          "r (18%) > k (14%) → growth firm → retain everything",
+          "P = [0 + (0.18/0.14) × 12] ÷ 0.14 = ₹110.20"
+        ],
+        "formula_used": "Walter: r > k ⇒ D/P = 0",
+        "trap": "Price rises steadily as payout falls when r > k."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "40%; ₹100.41",
+          "is_correct": false,
+          "error": "present payout assumed optimal",
+          "label": "A"
+        },
+        {
+          "text": "0%; ₹110.20",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "100%; ₹85.71",
+          "is_correct": false,
+          "error": "declining-firm rule applied although r > k",
+          "label": "C"
+        },
+        {
+          "text": "0%; ₹85.71",
+          "is_correct": false,
+          "error": "correct payout but price computed as EPS ÷ k",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-066",
+      "subject": "finance",
+      "microtopic_slug": "fin-dividend-policy-models-walter-gordon-and-mm-c3d39d63",
+      "microtopic_name": "Dividend policy models — Walter, Gordon and MM",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "FINC-C3-meridian",
+      "stem": "**Case — Meridian Tools Ltd.** EPS ₹12; return on investment 18%; cost of equity 14%; 5 lakh equity shares; present payout ratio 40%; current market price ₹100. The company plans capital investment of ₹90 lakh next year and expects net income of ₹60 lakh.\n\nTreating ₹12 as next year's EPS, the price per share under Gordon's model at the present payout ratio is:",
+      "explanation": {
+        "steps": [
+          "b = 0.6; g = b × r = 0.6 × 18% = 10.8%",
+          "P = E(1 − b) ÷ (k − br) = 4.80 ÷ (14% − 10.8%) = ₹150.00"
+        ],
+        "formula_used": "P = E₁(1 − b) ÷ (k − br)",
+        "trap": "g must be below k; here the spread is only 3.2%."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹166.20",
+          "is_correct": false,
+          "error": "dividend grown once more although EPS is already next year's",
+          "label": "A"
+        },
+        {
+          "text": "₹150.00",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹85.71",
+          "is_correct": false,
+          "error": "growth computed as retention × k instead of retention × r",
+          "label": "C"
+        },
+        {
+          "text": "₹70.59",
+          "is_correct": false,
+          "error": "growth computed as payout × r instead of retention × r",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-067",
+      "subject": "finance",
+      "microtopic_slug": "fin-dividend-policy-models-walter-gordon-and-mm-c3d39d63",
+      "microtopic_name": "Dividend policy models — Walter, Gordon and MM",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "FINC-C3-meridian",
+      "stem": "**Case — Meridian Tools Ltd.** EPS ₹12; return on investment 18%; cost of equity 14%; 5 lakh equity shares; present payout ratio 40%; current market price ₹100. The company plans capital investment of ₹90 lakh next year and expects net income of ₹60 lakh.\n\nThe company decides to pay a dividend of ₹4.80 per share at the end of the year. Under the Modigliani–Miller model, the number of new shares it must issue at year-end to finance the investment is closest to:",
+      "explanation": {
+        "steps": [
+          "P₁ = P₀(1 + k) − D₁ = 100 × 1.14 − 4.80 = ₹109.20",
+          "Retained earnings = 60 − 4.80 × 5 = ₹36 lakh; funds to raise = 90 − 36 = ₹54 lakh",
+          "New shares = 54 lakh ÷ 109.20 = 49,451 shares"
+        ],
+        "formula_used": "P₁ = P₀(1 + ke) − D₁;  m = (I − (E − nD₁)) ÷ P₁",
+        "trap": "The ex-dividend price P₁, not P₀, is the issue price."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "49,451 shares",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "54,000 shares",
+          "is_correct": false,
+          "error": "new shares priced at the current price instead of P₁",
+          "label": "B"
+        },
+        {
+          "text": "26,316 shares",
+          "is_correct": false,
+          "error": "no-dividend case (P₁ = ₹114, only ₹30 lakh to raise)",
+          "label": "C"
+        },
+        {
+          "text": "82,418 shares",
+          "is_correct": false,
+          "error": "entire investment treated as externally financed",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-068",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-structure-theories-ni-noi-traditional-and-mm-1e092ca9",
+      "microtopic_name": "Capital structure theories — NI, NOI, traditional and MM",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "FINC-C4-rudra",
+      "stem": "**Case — Rudra Logistics Ltd** is all-equity financed. EBIT is ₹30 lakh a year in perpetuity, all earnings are distributed, and its cost of equity is 15% (unlevered beta 1.0; risk-free rate 7%; expected market return 15%). The corporate tax rate is 25%. It plans to issue ₹60 lakh of perpetual debt at the risk-free rate of 7% and use the proceeds to buy back shares. Assume Modigliani–Miller (1963) conditions with corporate taxes.\n\nThe value of the firm after the recapitalisation is:",
+      "explanation": {
+        "steps": [
+          "VU = 30 × (1 − 0.25) ÷ 0.15 = ₹150 lakh",
+          "VL = VU + tD = 150 + 0.25 × 60 = ₹165 lakh"
+        ],
+        "formula_used": "VL = VU + tD",
+        "trap": "Only the present value of the interest tax shield is added."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "₹200 lakh",
+          "is_correct": false,
+          "error": "taxes ignored (MM without taxes)",
+          "label": "A"
+        },
+        {
+          "text": "₹165 lakh",
+          "is_correct": true,
+          "error": null,
+          "label": "B"
+        },
+        {
+          "text": "₹210 lakh",
+          "is_correct": false,
+          "error": "full amount of debt added instead of the tax shield t × D",
+          "label": "C"
+        },
+        {
+          "text": "₹150 lakh",
+          "is_correct": false,
+          "error": "tax shield on debt ignored",
+          "label": "D"
+        }
+      ],
+      "correct_label": "B"
+    },
+    {
+      "id": "FINC-069",
+      "subject": "finance",
+      "microtopic_slug": "fin-capital-structure-theories-ni-noi-traditional-and-mm-1e092ca9",
+      "microtopic_name": "Capital structure theories — NI, NOI, traditional and MM",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "FINC-C4-rudra",
+      "stem": "**Case — Rudra Logistics Ltd** is all-equity financed. EBIT is ₹30 lakh a year in perpetuity, all earnings are distributed, and its cost of equity is 15% (unlevered beta 1.0; risk-free rate 7%; expected market return 15%). The corporate tax rate is 25%. It plans to issue ₹60 lakh of perpetual debt at the risk-free rate of 7% and use the proceeds to buy back shares. Assume Modigliani–Miller (1963) conditions with corporate taxes.\n\nThe cost of equity after the recapitalisation is:",
+      "explanation": {
+        "steps": [
+          "E = VL − D = 165 − 60 = ₹105 lakh",
+          "KeL = 15% + (15% − 7%) × 0.75 × 60/105 = 18.43%",
+          "Check: net income = (30 − 4.2) × 0.75 = ₹19.35 lakh; ÷ 105 = 18.43%"
+        ],
+        "formula_used": "KeL = Ku + (Ku − Kd)(1 − t)(D/E)",
+        "trap": "Equity is VL − D, which already includes the tax shield."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "17.18%",
+          "is_correct": false,
+          "error": "debt ÷ firm value used instead of debt ÷ equity",
+          "label": "A"
+        },
+        {
+          "text": "19%",
+          "is_correct": false,
+          "error": "equity taken as VU − D, ignoring the tax-shield gain",
+          "label": "B"
+        },
+        {
+          "text": "18.43%",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "19.57%",
+          "is_correct": false,
+          "error": "(1 − t) factor omitted — MM no-tax formula",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-070",
+      "subject": "finance",
+      "microtopic_slug": "fin-capm-beta-and-the-security-market-line-3e220793",
+      "microtopic_name": "CAPM, beta and the security market line",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L4",
+      "difficulty": "hard",
+      "question_kind": "case",
+      "stimulus_group": "FINC-C4-rudra",
+      "stem": "**Case — Rudra Logistics Ltd** is all-equity financed. EBIT is ₹30 lakh a year in perpetuity, all earnings are distributed, and its cost of equity is 15% (unlevered beta 1.0; risk-free rate 7%; expected market return 15%). The corporate tax rate is 25%. It plans to issue ₹60 lakh of perpetual debt at the risk-free rate of 7% and use the proceeds to buy back shares. Assume Modigliani–Miller (1963) conditions with corporate taxes.\n\nThe equity beta after recapitalisation, consistent with CAPM and the cost of equity found above, is:",
+      "explanation": {
+        "steps": [
+          "βL = βU[1 + (1 − t)D/E] = 1.0 × [1 + 0.75 × 60/105] = 1.43",
+          "CAPM check: 7% + 1.4286 × 8% = 18.43% = KeL"
+        ],
+        "formula_used": "βL = βU[1 + (1 − t)D/E]",
+        "trap": "With risk-free debt, Hamada's relevering matches MM's cost of equity."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": false,
+      "source_refs": [
+        {
+          "type": "pattern_only",
+          "note": "Standard ICAI/ICMAI Financial Management pattern. Original figures and entities; no text reproduced."
+        }
+      ],
+      "options": [
+        {
+          "text": "1.27",
+          "is_correct": false,
+          "error": "debt ÷ firm value used instead of debt ÷ equity",
+          "label": "A"
+        },
+        {
+          "text": "1.57",
+          "is_correct": false,
+          "error": "(1 − t) omitted in relevering",
+          "label": "B"
+        },
+        {
+          "text": "1.00",
+          "is_correct": false,
+          "error": "beta assumed unchanged by financial leverage",
+          "label": "C"
+        },
+        {
+          "text": "1.43",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-071",
+      "subject": "finance",
+      "microtopic_slug": "fin-income-tax-assessment-and-rectification-15ac02be",
+      "microtopic_name": "Income-tax — assessment and rectification",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under the Income-tax Act, 2025, which concept replaces the twin concepts of 'previous year' and 'assessment year' used under the Income-tax Act, 1961?",
+      "explanation": {
+        "steps": [
+          "The 1961 Act taxed income of the previous year in the following assessment year.",
+          "The 2025 Act, in force from 1 April 2026, uses a single 'tax year' — the income and the year of reference are the same."
+        ],
+        "formula_used": "Old: PY → AY (next year);  New: tax year = year of earning",
+        "trap": "The new Act does not keep 'assessment year' as the reference label."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Income-tax Act, 2025 (w.e.f. 1 April 2026) — verify against official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "'Assessment year' alone, with the income of that same year taxed in it",
+          "is_correct": false,
+          "error": "retains the old term instead of the new 'tax year'",
+          "label": "A"
+        },
+        {
+          "text": "An 'accounting year' that follows each assessee's own books of account",
+          "is_correct": false,
+          "error": "invents an assessee-specific year",
+          "label": "B"
+        },
+        {
+          "text": "'Financial year' replaces 'previous year'; 'assessment year' continues",
+          "is_correct": false,
+          "error": "assumes only one of the two terms is renamed",
+          "label": "C"
+        },
+        {
+          "text": "A single 'tax year', the year in which the income is earned",
+          "is_correct": true,
+          "error": null,
+          "label": "D"
+        }
+      ],
+      "correct_label": "D"
+    },
+    {
+      "id": "FINC-072",
+      "subject": "finance",
+      "microtopic_slug": "fin-income-tax-assessment-and-rectification-15ac02be",
+      "microtopic_name": "Income-tax — assessment and rectification",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "conceptual",
+      "stimulus_group": null,
+      "stem": "Under the Income-tax Act, 2025, how are the following two periods of Ms Anika's salary income correctly labelled? (i) 1 April 2024 – 31 March 2025, assessed under the Income-tax Act, 1961; (ii) 1 April 2026 – 31 March 2027, taxed under the Income-tax Act, 2025.",
+      "explanation": {
+        "steps": [
+          "Under the 1961 Act, income of PY 2024-25 (FY 2024-25) is assessed in AY 2025-26.",
+          "Under the 2025 Act, income earned in FY 2026-27 is income of tax year 2026-27 — no lag."
+        ],
+        "formula_used": "FY of earning = tax year (2025 Act);  AY = FY + 1 (1961 Act)",
+        "trap": "The one-year lag disappears under the new Act."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Income-tax Act, 2025 (w.e.f. 1 April 2026) — verify against official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "(i) Assessment year 2025-26; (ii) tax year 2026-27",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "(i) Assessment year 2025-26; (ii) tax year 2027-28",
+          "is_correct": false,
+          "error": "AY-style one-year lag carried into the new 'tax year'",
+          "label": "B"
+        },
+        {
+          "text": "(i) Assessment year 2024-25; (ii) tax year 2026-27",
+          "is_correct": false,
+          "error": "old-Act income labelled by the year of earning rather than the following AY",
+          "label": "C"
+        },
+        {
+          "text": "(i) Previous year 2025-26; (ii) tax year 2027-28",
+          "is_correct": false,
+          "error": "both periods shifted forward by a year",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-073",
+      "subject": "finance",
+      "microtopic_slug": "fin-direct-vs-indirect-taxes-66414170",
+      "microtopic_name": "Direct vs indirect taxes",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L1",
+      "difficulty": "easy",
+      "question_kind": "statement",
+      "stimulus_group": null,
+      "stem": "Under the Income-tax Act, 2025, consider the following statements:\n\n1. Income tax under the new Act remains a direct tax, as its impact and incidence fall on the same person.\n2. The Goods and Services Tax has been merged into the Income-tax Act, 2025 as part of the simplification.\n3. The Income-tax Act, 2025 replaces the Income-tax Act, 1961 with effect from 1 April 2026.\n\nWhich of the statements is/are correct?",
+      "explanation": {
+        "steps": [
+          "Income tax is a direct tax: the person on whom it is imposed bears it.",
+          "GST remains a separate indirect tax levied under the CGST/SGST/IGST laws; the 2025 Act deals only with income tax.",
+          "The 2025 Act replaced the 1961 Act from 1 April 2026."
+        ],
+        "formula_used": "Direct tax: impact = incidence",
+        "trap": "Simplification of the income-tax law did not absorb indirect taxes."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Income-tax Act, 2025 (w.e.f. 1 April 2026) — verify against official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "1 and 3 only",
+          "is_correct": true,
+          "error": null,
+          "label": "A"
+        },
+        {
+          "text": "3 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 1: income tax is not shifted to another person",
+          "label": "B"
+        },
+        {
+          "text": "All of 1, 2 and 3",
+          "is_correct": false,
+          "error": "wrongly accepts statement 2: GST is a separate indirect tax under the GST laws",
+          "label": "C"
+        },
+        {
+          "text": "1 only",
+          "is_correct": false,
+          "error": "wrongly rejects statement 3: the new Act applies from 1 April 2026",
+          "label": "D"
+        }
+      ],
+      "correct_label": "A"
+    },
+    {
+      "id": "FINC-074",
+      "subject": "finance",
+      "microtopic_slug": "fin-income-tax-assessment-and-rectification-15ac02be",
+      "microtopic_name": "Income-tax — assessment and rectification",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L2",
+      "difficulty": "medium",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Under the Income-tax Act, 2025, compute the tax payable for tax year 2026-27 by Mr Devansh, a resident individual under the new regime whose only income is a salary of ₹18,50,000. Assume the following new-regime slabs apply for tax year 2026-27:\n\n| Total income (₹) | Rate |\n|---|---:|\n| Up to 4,00,000 | Nil |\n| 4,00,001 – 8,00,000 | 5% |\n| 8,00,001 – 12,00,000 | 10% |\n| 12,00,001 – 16,00,000 | 15% |\n| 16,00,001 – 20,00,000 | 20% |\n| 20,00,001 – 24,00,000 | 25% |\n| Above 24,00,000 | 30% |\n\nAssume also: standard deduction from salary ₹75,000; rebate equal to the tax (maximum ₹60,000) where total income does not exceed ₹12,00,000, with no marginal relief; health and education cess 4% on tax.",
+      "explanation": {
+        "steps": [
+          "Total income = 18,50,000 − 75,000 = 17,75,000",
+          "Tax: 4–8 L @5% = 20,000; 8–12 L @10% = 40,000; 12–16 L @15% = 60,000; 16–17.75 L @20% = 35,000 → 1,55,000",
+          "No rebate (income > 12 L); cess 4% = 6,200 → ₹1,61,200"
+        ],
+        "formula_used": "Tax = Σ slab tax on (Salary − Std deduction) + 4% cess",
+        "trap": "Slab rates apply to each band, not to the whole income."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Income-tax Act, 2025 (w.e.f. 1 April 2026) — verify against official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹98,800",
+          "is_correct": false,
+          "error": "rebate allowed although total income exceeds ₹12,00,000",
+          "label": "A"
+        },
+        {
+          "text": "₹1,76,800",
+          "is_correct": false,
+          "error": "standard deduction not allowed",
+          "label": "B"
+        },
+        {
+          "text": "₹1,61,200",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "₹1,55,000",
+          "is_correct": false,
+          "error": "cess omitted",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    },
+    {
+      "id": "FINC-075",
+      "subject": "finance",
+      "microtopic_slug": "fin-income-tax-assessment-and-rectification-15ac02be",
+      "microtopic_name": "Income-tax — assessment and rectification",
+      "exams": [
+        "ifsca",
+        "pfrda",
+        "sebi"
+      ],
+      "rubric_level": "L3",
+      "difficulty": "hard",
+      "question_kind": "numerical",
+      "stimulus_group": null,
+      "stem": "Under the Income-tax Act, 2025, two resident salaried individuals opt for the new regime for tax year 2026-27: Ms Esha (salary ₹12,60,000) and Mr Farhan (salary ₹12,90,000), with no other income. Assume the following new-regime slabs apply for tax year 2026-27:\n\n| Total income (₹) | Rate |\n|---|---:|\n| Up to 4,00,000 | Nil |\n| 4,00,001 – 8,00,000 | 5% |\n| 8,00,001 – 12,00,000 | 10% |\n| 12,00,001 – 16,00,000 | 15% |\n| 16,00,001 – 20,00,000 | 20% |\n| 20,00,001 – 24,00,000 | 25% |\n| Above 24,00,000 | 30% |\n\nAssume also: standard deduction from salary ₹75,000; rebate equal to the tax (maximum ₹60,000) where total income does not exceed ₹12,00,000, with no marginal relief; health and education cess 4% on tax.\n\nTheir tax liabilities respectively are:",
+      "explanation": {
+        "steps": [
+          "Esha: total income = 11,85,000 ≤ 12,00,000 → tax 58,500 fully rebated → Nil",
+          "Farhan: total income = 12,15,000 > 12,00,000 → tax = 60,000 + 15% × 15,000 = 62,250; no rebate; + 4% cess = ₹64,740"
+        ],
+        "formula_used": "Rebate only if total income ≤ threshold (as given)",
+        "trap": "A ₹30,000 salary difference creates a ₹64,740 tax difference when marginal relief is ignored."
+      },
+      "source_kind": "authored",
+      "provenance": "ai_drafted",
+      "review_status": "draft",
+      "verify_fact": true,
+      "source_refs": [
+        {
+          "type": "statutory_or_standard",
+          "note": "Income-tax Act, 2025 (w.e.f. 1 April 2026) — verify against official text"
+        }
+      ],
+      "options": [
+        {
+          "text": "₹71,760 and ₹76,440",
+          "is_correct": false,
+          "error": "standard deduction ignored for both",
+          "label": "A"
+        },
+        {
+          "text": "Nil and ₹2,340",
+          "is_correct": false,
+          "error": "rebate also given to Farhan although his total income exceeds ₹12,00,000",
+          "label": "B"
+        },
+        {
+          "text": "Nil and ₹64,740",
+          "is_correct": true,
+          "error": null,
+          "label": "C"
+        },
+        {
+          "text": "Nil and ₹62,250",
+          "is_correct": false,
+          "error": "cess omitted on Farhan's tax",
+          "label": "D"
+        }
+      ],
+      "correct_label": "C"
+    }
+  ]
+}

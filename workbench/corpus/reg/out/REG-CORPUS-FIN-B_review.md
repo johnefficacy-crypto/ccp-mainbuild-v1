@@ -1,6 +1,6 @@
 # REG-CORPUS-FIN-B — finance — SME review sheet (170 Q)
 
-Levels {'L1': 34, 'L3': 51, 'L2': 51, 'L4': 34} · key positions {'B': 43, 'D': 42, 'A': 43, 'C': 42} · microtopics covered 50/100
+Levels {'L1': 34, 'L3': 51, 'L2': 51, 'L4': 34} · key positions {'B': 43, 'D': 42, 'A': 43, 'C': 42} · microtopics covered 50/111
 Status `ai_drafted` / `draft`. ⚠ = verify_fact (statute / rate / threshold — check against current official text).
 
 
@@ -3947,7 +3947,7 @@ Under the Income-tax Act, 1961, an individual files the return for AY 2025-26 on
 
 ## FINB-156 · L3 · hard · Income-tax — assessment and rectification ⚠
 
-Under the Income-tax Act, 1961, an assessment order under section 143(3) was passed on 15 December 2023. The assessee files a rectification application under section 154, which the Assessing Officer receives on 10 August 2026. The last date to rectify the order at all, and the date by which the AO must dispose of this application, are respectively:
+Under the Income-tax Act, 1961, an assessment order for AY 2022-23 under section 143(3) was passed on 15 December 2023. The assessee files a rectification application under section 154, which the Assessing Officer receives on 10 August 2026. The last date to rectify the order at all, and the date by which the AO must dispose of this application, are respectively:
 
 - **A.** 31 March 2028; 28 February 2027 ✅
 - **B.** 31 March 2027; 28 February 2027  _(error: 3-year limit assumed)_
@@ -3969,7 +3969,7 @@ Under the Income-tax Act, 1961, an assessment order under section 143(3) was pas
 
 ## FINB-157 · L1 · easy · Income-tax — penalties and PAN provisions ⚠
 
-Under the Income-tax Act, 1961, the penalty under section 272B for failure to comply with the PAN provisions of section 139A is:
+Under the Income-tax Act, 1961 (law as applicable for AY 2025-26), the penalty under section 272B for failure to comply with the PAN provisions of section 139A is:
 
 - **A.** ₹5,000  _(error: confuses with the late-filing fee under s.234F)_
 - **B.** ₹1,000  _(error: confuses with the PAN–Aadhaar late-linking fee under s.234H)_
@@ -3991,7 +3991,7 @@ Under the Income-tax Act, 1961, the penalty under section 272B for failure to co
 
 ## FINB-158 · L3 · hard · Income-tax — penalties and PAN provisions ⚠
 
-Under the Income-tax Act, 1961, an assessee (all income taxable at the maximum marginal rate of 30% plus 4% cess, no surcharge) returned ₹12,00,000. The assessed income is ₹20,00,000; the entire difference arose from fabricated purchase invoices. The penalty under section 270A is:
+Under the Income-tax Act, 1961 (AY 2025-26), an assessee (all income taxable at the maximum marginal rate of 30% plus 4% cess, no surcharge) returned ₹12,00,000. The assessed income is ₹20,00,000; the entire difference arose from fabricated purchase invoices. The penalty under section 270A is:
 
 - **A.** ₹4,99,200 ✅
 - **B.** ₹1,24,800  _(error: 50% rate for under-reporting used; fabrication is misreporting)_
