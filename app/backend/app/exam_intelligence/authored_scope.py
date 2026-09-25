@@ -25,9 +25,17 @@ all of them — and its pool read is not even issued.
 Body-agnostic subjects (REG-CORPUS-04) are the shared Quant / Reasoning /
 English / static GK trees: their topics carry no ``metadata.exams`` key by
 design (migration 305) because every banking, SSC and regulator exam sits the
-same syllabus. The exam's own ``exam_phase_sections`` decide which of them it
-examines, so SSC CGL and SEBI both see Quant rows and an exam with no Quant
-section sees none.
+same syllabus. Which of them an exam examines comes from two sources:
+
+* its own ``exam_phase_sections`` — used everywhere (topic practice, readiness,
+  generated mocks, diagnostics);
+* :data:`EXAM_AGNOSTIC_SUBJECTS` (REG-CORPUS-05) — an explicit per-exam list,
+  UNIONed in for TOPIC PRACTICE ONLY (``include_configured_subjects``). Most
+  live exams have no sections for the shared subjects yet (operator check
+  2026-09-26: only SSC CGL and RBI Grade B do), so without it SEBI, IFSCA,
+  PFRDA and NABARD learners could not practise Quant or GK at all. Generated
+  mocks keep reading sections only: a mock's shape is the exam's authored
+  pattern, never this list. No ``exam_phase_sections`` rows are implied.
 
 Tier (REG-CORPUS-04). An authored row may carry ``metadata.exam_tier``
 (``foundation`` | ``officer``). :data:`EXAM_TIERS` maps an exam slug to its
@@ -67,30 +75,71 @@ BODY_AGNOSTIC_SUBJECTS: frozenset[str] = frozenset({
 EXAM_TIER_VALUES = ("foundation", "officer")
 
 #: exam slug -> authored-content tier. Explicit, like EXAM_TOPIC_KEYS: an exam
-#: missing here is never tier-filtered.
+#: missing here is never tier-filtered. Keyed by LIVE ``exams.slug`` values
+#: (operator-verified 2026-09-26, REG-CORPUS-05); a slug that does not exist
+#: live is dead config, so none is listed speculatively.
 EXAM_TIERS: dict[str, str] = {
-    # foundation — SSC, IBPS/SBI Clerk, RRB
-    "ssc-cgl": "foundation",
-    "ssc-chsl": "foundation",
-    "ssc-mts": "foundation",
-    "ssc-cpo": "foundation",
-    "ssc-gd": "foundation",
-    "ibps-clerk": "foundation",
-    "sbi-clerk": "foundation",
-    "ibps-rrb-clerk": "foundation",
+    # foundation — SSC, IBPS/SBI Clerk, RRB, RBI Assistant
+    "national-ssc-combined-graduate-level-cgl": "foundation",
+    "national-ssc-combined-higher-secondary-level-chsl": "foundation",
+    "national-ssc-multi-tasking-staff-mts-havaldar": "foundation",
+    "national-ssc-cpo-delhi-police-capf-sub-inspector": "foundation",
+    "national-ssc-gd-constable": "foundation",
+    "national-ibps-clerk": "foundation",
+    "national-sbi-clerk-junior-associate": "foundation",
+    "national-ibps-rrb-office-assistant": "foundation",
+    "national-rrb-group-d-level-1": "foundation",
+    "national-rbi-assistant": "foundation",
     "rrb-ntpc": "foundation",
-    "rrb-group-d": "foundation",
-    # officer — IBPS/SBI PO, RBI, regulators, NABARD
+    # officer — IBPS/SBI PO, RRB officers, RBI, regulators, NABARD, LIC
     "ibps-po": "officer",
     "sbi-po": "officer",
-    "ibps-rrb-po": "officer",
+    "national-ibps-rrb-officer-scale-i-ii-iii": "officer",
     "rbi-grade-b": "officer",
     "sebi-grade-a": "officer",
-    "nabard-grade-a": "officer",
-    "nabard-grade-b": "officer",
     "ifsca-grade-a": "officer",
     "pfrda-grade-a": "officer",
+    "national-nabard-grade-a": "officer",
+    "national-lic-aao-ado": "officer",
 }
+
+#: The shared QRE + static GK subjects (a subset of BODY_AGNOSTIC_SUBJECTS).
+QRE_GK_SUBJECTS: frozenset[str] = frozenset({
+    "english-language",
+    "general-intelligence-reasoning",
+    "quantitative-aptitude",
+    "general-knowledge",
+})
+
+#: exam slug -> body-agnostic subject slugs its learners may PRACTISE by topic,
+#: in addition to whatever its exam_phase_sections examine. Topic practice only
+#: (see module docstring). Explicit so it can be diffed against EXAM_TIERS by
+#: tests/study_os/test_authored_scope_config.py; upsc-cse is deliberately absent
+#: and no sandbox exam may appear.
+EXAM_AGNOSTIC_SUBJECTS: dict[str, frozenset[str]] = {
+    "national-ssc-combined-graduate-level-cgl": QRE_GK_SUBJECTS,
+    "national-ssc-combined-higher-secondary-level-chsl": QRE_GK_SUBJECTS,
+    "national-ssc-multi-tasking-staff-mts-havaldar": QRE_GK_SUBJECTS,
+    "national-ssc-cpo-delhi-police-capf-sub-inspector": QRE_GK_SUBJECTS,
+    "national-ssc-gd-constable": QRE_GK_SUBJECTS,
+    "national-ibps-clerk": QRE_GK_SUBJECTS,
+    "national-sbi-clerk-junior-associate": QRE_GK_SUBJECTS,
+    "national-ibps-rrb-office-assistant": QRE_GK_SUBJECTS,
+    "national-rrb-group-d-level-1": QRE_GK_SUBJECTS,
+    "national-rbi-assistant": QRE_GK_SUBJECTS,
+    "rrb-ntpc": QRE_GK_SUBJECTS,
+    "ibps-po": QRE_GK_SUBJECTS,
+    "sbi-po": QRE_GK_SUBJECTS,
+    "national-ibps-rrb-officer-scale-i-ii-iii": QRE_GK_SUBJECTS,
+    "rbi-grade-b": QRE_GK_SUBJECTS,
+    "sebi-grade-a": QRE_GK_SUBJECTS,
+    "ifsca-grade-a": QRE_GK_SUBJECTS,
+    "pfrda-grade-a": QRE_GK_SUBJECTS,
+    "national-nabard-grade-a": QRE_GK_SUBJECTS,
+    "national-lic-aao-ado": QRE_GK_SUBJECTS,
+}
+
+_SANDBOX_MARK = "sandbox"
 
 AUTHORED_SOURCE_KIND = "authored"
 
@@ -139,6 +188,40 @@ def _exam_slug(sb: Any, exam_id: str | None) -> str | None:
     return rows[0].get("slug") if rows else None
 
 
+def configured_agnostic_subjects(slug: str | None) -> frozenset[str]:
+    """Body-agnostic subject slugs :data:`EXAM_AGNOSTIC_SUBJECTS` grants the
+    exam for topic practice. Never any for a sandbox exam, and never a subject
+    outside BODY_AGNOSTIC_SUBJECTS."""
+    s = _norm_slug(slug)
+    if not s or _SANDBOX_MARK in s:
+        return frozenset()
+    return frozenset(EXAM_AGNOSTIC_SUBJECTS.get(s, frozenset())) & BODY_AGNOSTIC_SUBJECTS
+
+
+def agnostic_config_drift() -> dict[str, list[str]]:
+    """Exams in one config map but not the other (REG-CORPUS-05 drift guard)."""
+    tiers, agnostic = set(EXAM_TIERS), set(EXAM_AGNOSTIC_SUBJECTS)
+    return {
+        "agnostic_without_tier": sorted(agnostic - tiers),
+        "tier_without_agnostic": sorted(tiers - agnostic),
+    }
+
+
+def log_agnostic_config_drift(log: logging.Logger = logger) -> list[str]:
+    """Startup check: warn for every exam granted body-agnostic eligibility by
+    config but given no tier (its learners would get both tiers unfiltered).
+    Returns the offending slugs."""
+    drift = agnostic_config_drift()
+    for slug in drift["agnostic_without_tier"]:
+        log.warning("authored_scope: exam %s has body-agnostic eligibility but no EXAM_TIERS entry", slug)
+    for slug in drift["tier_without_agnostic"]:
+        log.warning("authored_scope: exam %s has a tier but no EXAM_AGNOSTIC_SUBJECTS entry", slug)
+    return drift["agnostic_without_tier"]
+
+
+_WARNED_UNTIERED: set[str] = set()
+
+
 def resolve_exam_topic_key(sb: Any, exam_id: str | None) -> str | None:
     """Read the exam's slug and map it. ``None`` on no exam, unknown slug, or a
     failed read — the caller then serves no keyed authored rows (fail closed)."""
@@ -150,6 +233,20 @@ def _chunked_in(sb: Any, table: str, cols: str, col: str, ids: list[str]) -> lis
     for i in range(0, len(ids), _ID_BATCH):
         out.extend(sb.table(table).select(cols).in_(col, ids[i : i + _ID_BATCH]).execute().data or [])
     return out
+
+
+def configured_subject_ids(sb: Any, slug: str | None) -> frozenset[str]:
+    """Subject ids for :func:`configured_agnostic_subjects`. Fail closed: a
+    failed read grants nothing."""
+    slugs = sorted(configured_agnostic_subjects(slug))
+    if not slugs:
+        return frozenset()
+    try:
+        rows = sb.table("subjects").select("id,slug").in_("slug", slugs).execute().data or []
+    except Exception:  # noqa: BLE001
+        logger.warning("authored_scope: configured subjects read failed exam=%s", slug, exc_info=True)
+        return frozenset()
+    return frozenset(str(r["id"]) for r in rows if r.get("id") and _norm_slug(r.get("slug")) in slugs)
 
 
 def agnostic_subject_ids_for_exam(sb: Any, exam_id: str | None) -> frozenset[str]:
@@ -178,17 +275,26 @@ def agnostic_subject_ids_for_exam(sb: Any, exam_id: str | None) -> frozenset[str
     )
 
 
-def resolve_exam_scope(sb: Any, exam_id: str | None) -> ExamAuthoredScope:
+def resolve_exam_scope(
+    sb: Any, exam_id: str | None, *, include_configured_subjects: bool = False
+) -> ExamAuthoredScope:
     """Key, body-agnostic subjects and tier for ``exam_id``. Empty on no exam
-    or a failed slug read."""
+    or a failed slug read.
+
+    Body-agnostic subjects are the exam's phase-section subjects, UNIONed with
+    :data:`EXAM_AGNOSTIC_SUBJECTS` when ``include_configured_subjects`` (topic
+    practice only)."""
     slug = _exam_slug(sb, exam_id)
     if not slug:
         return ExamAuthoredScope(None, frozenset(), None)
-    return ExamAuthoredScope(
-        key=topic_key_for_exam_slug(slug),
-        agnostic_subject_ids=agnostic_subject_ids_for_exam(sb, exam_id),
-        tier=exam_tier_for_slug(slug),
-    )
+    agnostic = agnostic_subject_ids_for_exam(sb, exam_id)
+    if include_configured_subjects:
+        agnostic = agnostic | configured_subject_ids(sb, slug)
+    tier = exam_tier_for_slug(slug)
+    if agnostic and tier is None and _norm_slug(slug) not in _WARNED_UNTIERED:
+        _WARNED_UNTIERED.add(_norm_slug(slug))
+        logger.warning("authored_scope: exam %s serves body-agnostic rows but has no tier", slug)
+    return ExamAuthoredScope(key=topic_key_for_exam_slug(slug), agnostic_subject_ids=agnostic, tier=tier)
 
 
 def topic_carries_key(topic_metadata: Any, key: str) -> bool:
@@ -257,6 +363,7 @@ def authored_rows_for_exam(
     fetch: Callable[[], list[dict]],
     *,
     same_tier_only: bool = False,
+    include_configured_subjects: bool = False,
 ) -> list[dict]:
     """Authored rows eligible for ``exam_id``, from a caller-built read.
 
@@ -269,8 +376,12 @@ def authored_rows_for_exam(
 
     ``same_tier_only`` drops rows whose ``metadata.exam_tier`` differs from the
     exam's tier; untiered rows, and every row for an untiered exam, are kept.
+
+    ``include_configured_subjects`` adds :data:`EXAM_AGNOSTIC_SUBJECTS` to the
+    exam's section subjects — topic practice passes True; generated mocks and
+    diagnostics do not.
     """
-    scope = resolve_exam_scope(sb, exam_id)
+    scope = resolve_exam_scope(sb, exam_id, include_configured_subjects=include_configured_subjects)
     if scope.empty:
         return []
     try:

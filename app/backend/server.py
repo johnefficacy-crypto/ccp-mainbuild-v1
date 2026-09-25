@@ -205,6 +205,13 @@ async def lifespan(app: FastAPI):
         _bootstrap_mock_publishers()
     except Exception as exc:  # noqa: BLE001
         logger.warning("bootstrap_mock_publishers raised unexpectedly: %s", exc)
+    # REG-CORPUS-05 drift guard: warn for any exam with body-agnostic
+    # eligibility but no tier (never fails boot).
+    try:
+        from app.exam_intelligence.authored_scope import log_agnostic_config_drift
+        log_agnostic_config_drift()
+    except Exception as exc:  # noqa: BLE001
+        logger.warning("authored_scope drift check raised unexpectedly: %s", exc)
     # APScheduler — in-process cron for notifications + recompute worker.
     scheduler_started = False
     if _scheduler_enabled():
