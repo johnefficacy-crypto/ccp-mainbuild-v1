@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-r"""REG-CORPUS-03 — authored corpus JSON → the bulk-import payload.
+r"""REG-CORPUS-03/04 — authored corpus JSON → the bulk-import payload.
 
-Input:  ``workbench/corpus/reg/out/REG-CORPUS-*.json`` (reglib schema) plus a
-        topics export (``--topics``) and the REG-FACTCHECK-1 results CSV.
+Input:  ``workbench/corpus/reg/out/REG-CORPUS-*.json`` and
+        ``workbench/corpus/qre/out/QRE-*.json`` (reglib schema), a topics export
+        (``--topics``), and the factcheck results CSVs (REG-FACTCHECK-1 and
+        QRE-FACTCHECK-GK).
 Output: one JSON file per batch under ``--out``, each a list of rows that
         ``app/backend/app/admin/mock_import.py`` accepts after REG-CORPUS-02
         (#1216). Upload it to ``POST /api/admin/mocks/questions/import/dry-run``,
@@ -15,6 +17,8 @@ export, a CSV with header ``id,slug,level,parent_topic_id,subject_id``
 Every row: ``exam_id`` absent (NULL — authored rows are scoped through
 ``topics.metadata.exams``), ``source_kind='authored'``, difficulty from the
 JSON, and the importer writes ``reviewer_status='draft'`` unconditionally.
+A row's ``exam_tier`` (QRE: ``foundation`` | ``officer``) goes to
+``metadata.exam_tier``; a row without one stays untiered.
 
 Fails loudly (exit 1, nothing written) on: a slug outside the corpus
 catalogue (``lists/*.tsv``), a catalogue slug missing from the topics export
@@ -24,6 +28,7 @@ within the run, and a case set whose stems do not share a stimulus.
     python scripts/reg_corpus_to_import.py --topics topics.csv --dry-run
     python scripts/reg_corpus_to_import.py --topics topics.csv \
         --batch REG-CORPUS-CST --batch REG-CORPUS-CST-PILOT
+    python scripts/reg_corpus_to_import.py --topics topics.csv --batch QRE-QA-A
 """
 from __future__ import annotations
 
@@ -36,13 +41,21 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 REG = ROOT / "workbench" / "corpus" / "reg"
+QRE = ROOT / "workbench" / "corpus" / "qre"
 CORPUS_DIR = REG / "out"
 LISTS_DIR = REG / "lists"
 FACTCHECK_CSV = REG / "factcheck" / "REG-FACTCHECK-1_results.csv"
+CORPUS_DIRS = (CORPUS_DIR, QRE / "out")
+LISTS_DIRS = (LISTS_DIR, QRE / "lists")
+FACTCHECK_CSVS = (FACTCHECK_CSV, QRE / "factcheck" / "QRE-FACTCHECK-GK_results.csv")
+BATCH_PATTERNS = ("REG-CORPUS-*.json", "QRE-*.json")
 DEFAULT_OUT = REG / "import"
-CORPUS_VERSION = "v1.1"
-FACTCHECK_VERDICTS = ("confirmed", "fix_needed", "wrong_key")
+#: batch-name prefix -> metadata.corpus_version
+CORPUS_VERSIONS = {"REG-CORPUS-": "v1.1", "QRE-": "v1"}
+CORPUS_VERSION = CORPUS_VERSIONS["REG-CORPUS-"]
+FACTCHECK_VERDICTS = ("confirmed", "fix_needed", "wrong_key", "unverifiable")
 NOT_FLAGGED = "not_flagged"
+EXAM_TIERS = ("foundation", "officer")
 
 sys.path.insert(0, str(ROOT / "app" / "backend"))
 from app.admin.mock_import import _parse_row  # noqa: E402 — the importer's own parser/fingerprint
@@ -54,12 +67,27 @@ class CorpusError(ValueError):
 
 # ── loading ────────────────────────────────────────────────────────────────────
 
-def load_corpus(corpus_dir: Path = CORPUS_DIR, batches: list[str] | None = None) -> dict[str, list[dict]]:
+def _paths(value: "Path | list[Path] | tuple[Path, ...]") -> list[Path]:
+    return [value] if isinstance(value, Path) else list(value)
+
+
+def corpus_version(batch: str | None) -> str:
+    for prefix, version in CORPUS_VERSIONS.items():
+        if (batch or "").startswith(prefix):
+            return version
+    raise CorpusError(f"no corpus_version for batch {batch!r}")
+
+
+def load_corpus(corpus_dir: "Path | list[Path] | tuple[Path, ...]" = CORPUS_DIRS,
+                batches: list[str] | None = None) -> dict[str, list[dict]]:
     """``{batch: [question, ...]}`` in file order, optionally restricted to ``batches``."""
     found: dict[str, list[dict]] = {}
-    for path in sorted(corpus_dir.glob("REG-CORPUS-*.json")):
-        data = json.loads(path.read_text(encoding="utf-8"))
-        found[data["batch"]] = data["questions"]
+    for d in _paths(corpus_dir):
+        for path in sorted(p for pattern in BATCH_PATTERNS for p in d.glob(pattern)):
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if data["batch"] in found:
+                raise CorpusError(f"batch {data['batch']} appears twice (again in {path})")
+            found[data["batch"]] = data["questions"]
     if batches:
         unknown = sorted(set(batches) - set(found))
         if unknown:
@@ -68,17 +96,23 @@ def load_corpus(corpus_dir: Path = CORPUS_DIR, batches: list[str] | None = None)
     return found
 
 
-def load_catalogue(lists_dir: Path = LISTS_DIR) -> set[str]:
+def load_catalogue(lists_dir: "Path | list[Path] | tuple[Path, ...]" = LISTS_DIRS) -> set[str]:
     slugs: set[str] = set()
-    for path in lists_dir.glob("*.tsv"):
-        with path.open(encoding="utf-8") as f:
-            slugs.update(r["slug"] for r in csv.DictReader(f, delimiter="\t") if r.get("slug"))
+    for d in _paths(lists_dir):
+        for path in d.glob("*.tsv"):
+            with path.open(encoding="utf-8") as f:
+                slugs.update(r["slug"] for r in csv.DictReader(f, delimiter="\t") if r.get("slug"))
     return slugs
 
 
-def load_factcheck(path: Path = FACTCHECK_CSV) -> dict[str, str]:
-    with path.open(encoding="utf-8") as f:
-        out = {r["id"]: r["verdict"].strip() for r in csv.DictReader(f)}
+def load_factcheck(path: "Path | list[Path] | tuple[Path, ...]" = FACTCHECK_CSVS) -> dict[str, str]:
+    out: dict[str, str] = {}
+    for p in _paths(path):
+        with p.open(encoding="utf-8") as f:
+            for r in csv.DictReader(f):
+                if r["id"] in out:
+                    raise CorpusError(f"factcheck id {r['id']} appears twice (again in {p})")
+                out[r["id"]] = r["verdict"].strip()
     bad = {v for v in out.values() if v not in FACTCHECK_VERDICTS}
     if bad:
         raise CorpusError(f"factcheck CSV has unknown verdict(s): {sorted(bad)}")
@@ -197,9 +231,10 @@ def to_import_row(
         "metadata": {
             "corpus_id": q["id"],
             "batch": batch,
-            "corpus_version": CORPUS_VERSION,
+            "corpus_version": corpus_version(batch) if batch else CORPUS_VERSION,
             "verify_fact": bool(q.get("verify_fact")),
             "factcheck_verdict": factcheck_verdict,
+            **({"exam_tier": q["exam_tier"]} if q.get("exam_tier") else {}),
         },
         "source_kind": "authored",
         "subject_id": subject_id,
@@ -262,6 +297,9 @@ def build(
             seen_id[q["id"]] = batch
             if q.get("stimulus_group") and q["id"] not in splits:
                 continue  # its case set already reported
+            if q.get("exam_tier") not in (None, *EXAM_TIERS):
+                errors.append(f"{q['id']}: exam_tier must be foundation|officer; got {q['exam_tier']!r}")
+                continue
             topic, err = _resolve_topic(q["microtopic_slug"], topics, catalogue)
             if err:
                 errors.append(f"{q['id']}: {err}")
@@ -294,18 +332,20 @@ def main(argv: list[str] | None = None) -> int:
                     help="batch name, e.g. REG-CORPUS-CST (repeatable; default: all)")
     ap.add_argument("--only-ids", type=Path, default=None, help="file with one corpus id per line")
     ap.add_argument("--dry-run", action="store_true", help="validate and report; write nothing")
-    ap.add_argument("--corpus-dir", type=Path, default=CORPUS_DIR)
-    ap.add_argument("--factcheck", type=Path, default=FACTCHECK_CSV)
+    ap.add_argument("--corpus-dir", type=Path, action="append", default=None,
+                    help="corpus out/ dir (repeatable; default: reg/out and qre/out)")
+    ap.add_argument("--factcheck", type=Path, action="append", default=None,
+                    help="factcheck results CSV (repeatable; default: REG-FACTCHECK-1 + QRE-FACTCHECK-GK)")
     ap.add_argument("--out", type=Path, default=DEFAULT_OUT)
     args = ap.parse_args(argv)
 
     try:
-        corpus = load_corpus(args.corpus_dir, args.batch)
+        corpus = load_corpus(args.corpus_dir or CORPUS_DIRS, args.batch)
         rows_by_batch, errors_by_batch = build(
             corpus,
             topics=load_topics(args.topics),
             catalogue=load_catalogue(),
-            factcheck=load_factcheck(args.factcheck),
+            factcheck=load_factcheck(args.factcheck or FACTCHECK_CSVS),
             only_ids=load_only_ids(args.only_ids) if args.only_ids else None,
         )
     except CorpusError as exc:
@@ -317,8 +357,9 @@ def main(argv: list[str] | None = None) -> int:
         rows, errors = rows_by_batch[batch], errors_by_batch[batch]
         cases = sum(1 for r in rows if r["stimuli"])
         verdicts = Counter(r["metadata"]["factcheck_verdict"] for r in rows)
+        tiers = Counter(r["metadata"].get("exam_tier", "untiered") for r in rows)
         print(f"{batch}: {len(rows)} rows · {cases} case rows · errors {len(errors)} · "
-              f"factcheck {dict(sorted(verdicts.items()))}")
+              f"factcheck {dict(sorted(verdicts.items()))} · tier {dict(sorted(tiers.items()))}")
         for e in errors:
             print(f"  ERROR {e}", file=sys.stderr)
         total_err += len(errors)

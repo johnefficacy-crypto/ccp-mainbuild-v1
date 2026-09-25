@@ -1,4 +1,4 @@
-"""REG-CORPUS-03 — corpus → import converter and SME review worksheets.
+"""REG-CORPUS-03/04 — corpus → import converter (REG + QRE) and SME review worksheets.
 
 No database and no network. The topics export is synthesised from the corpus
 catalogue (``workbench/corpus/reg/lists``) with deterministic fake ids.
@@ -84,13 +84,14 @@ def _cst(corpus) -> list[dict]:
 def test_whole_corpus_converts_with_no_errors(corpus, catalogue, factcheck):
     rows, errors = conv.build(corpus, topics=_topics(catalogue), catalogue=catalogue, factcheck=factcheck)
     assert all(not e for e in errors.values()), errors
-    assert sum(len(r) for r in rows.values()) == 1850
-    assert len(rows) == 16
-    # every factcheck row reaches its import row's metadata
+    # 1,850 REG + 3,315 QRE; 16 + 8 batches
+    assert sum(len(r) for r in rows.values()) == 5165
+    assert len(rows) == 24
+    # every factcheck row (REG-FACTCHECK-1 + QRE-FACTCHECK-GK) reaches its row's metadata
     verdicts = [r["metadata"]["factcheck_verdict"] for rs in rows.values() for r in rs]
-    assert verdicts.count("confirmed") == 931
-    assert verdicts.count("fix_needed") == 66
-    assert verdicts.count("wrong_key") == 14
+    assert verdicts.count("confirmed") == 931 + 820
+    assert verdicts.count("fix_needed") == 66 + 4
+    assert verdicts.count("wrong_key") == 14 + 1
 
 
 def test_row_shape_is_authored_draft_with_no_exam(corpus, catalogue, factcheck):
@@ -178,9 +179,9 @@ def test_duplicate_fingerprint_within_the_run_fails_loudly(corpus, catalogue, fa
 def test_duplicate_fingerprint_across_batches_fails_loudly(corpus, catalogue, factcheck):
     other = copy.deepcopy(next(q for q in _cst(corpus) if not q.get("stimulus_group")))
     other["id"] = "CST-PILOT-DUP"
-    _, errors = conv.build({"REG-CORPUS-CST": _cst(corpus), "REG-X": [other]},
+    _, errors = conv.build({"REG-CORPUS-CST": _cst(corpus), "REG-CORPUS-X": [other]},
                            topics=_topics(catalogue), catalogue=catalogue, factcheck=factcheck)
-    assert any("duplicate fingerprint" in e for e in errors["REG-X"])
+    assert any("duplicate fingerprint" in e for e in errors["REG-CORPUS-X"])
 
 
 def test_case_set_whose_stems_do_not_share_a_stimulus_fails_loudly(corpus, catalogue, factcheck):
@@ -263,6 +264,7 @@ def test_importer_still_validates_rubric_level_arriving_in_metadata():
 # ── worksheets ────────────────────────────────────────────────────────────────
 
 def test_worksheet_orders_fix1_rows_then_sample_then_rest(corpus, factcheck):
+    corpus = conv.load_corpus(conv.CORPUS_DIR)
     batch = "REG-CORPUS-ACT-REC"
     rows = ws.worksheet_rows(corpus[batch], factcheck, batch=batch)
     assert list(rows[0]) == ws.COLUMNS
@@ -287,8 +289,8 @@ def test_worksheet_sample_is_seeded(corpus, factcheck):
     assert a == b and a != c
 
 
-def test_committed_worksheets_match_a_fresh_run(corpus, factcheck):
-    for batch, qs in corpus.items():
+def test_committed_worksheets_match_a_fresh_run(factcheck):
+    for batch, qs in conv.load_corpus(conv.CORPUS_DIR).items():
         path = ws.REVIEW_DIR / f"{batch}.csv"
         with path.open(encoding="utf-8-sig", newline="") as f:
             committed = list(csv.DictReader(f))
@@ -327,3 +329,80 @@ def test_duplicate_export_slug_fails_only_when_the_corpus_uses_it(tmp_path, corp
                            catalogue=catalogue, factcheck=factcheck)
     errs = errors["REG-CORPUS-CST"]
     assert errs and all("ambiguous topic" in e and used in e for e in errs)
+
+
+# ── REG-CORPUS-04: QRE corpus, exam tier, stimulus-aware fingerprint ──────────
+
+def test_qre_qa_a_converts_with_exam_tier_and_its_own_corpus_version(corpus, catalogue, factcheck):
+    rows, errors = conv.build({"QRE-QA-A": corpus["QRE-QA-A"]}, topics=_topics(catalogue),
+                              catalogue=catalogue, factcheck=factcheck)
+    assert not errors["QRE-QA-A"]
+    qa = rows["QRE-QA-A"]
+    assert len(qa) == 390
+    tiers = [r["metadata"]["exam_tier"] for r in qa]
+    assert tiers.count("foundation") == 130 and tiers.count("officer") == 260
+    assert {r["metadata"]["corpus_version"] for r in qa} == {"v1"}
+    assert {r["metadata"]["factcheck_verdict"] for r in qa} == {"not_flagged"}
+    assert all(r["source_kind"] == "authored" and "exam_id" not in r for r in qa)
+
+
+def test_reg_rows_stay_untiered(corpus, catalogue, factcheck):
+    rows, _ = conv.build({"REG-CORPUS-CST": _cst(corpus)}, topics=_topics(catalogue),
+                         catalogue=catalogue, factcheck=factcheck)
+    assert all("exam_tier" not in r["metadata"] for r in rows["REG-CORPUS-CST"])
+    assert {r["metadata"]["corpus_version"] for r in rows["REG-CORPUS-CST"]} == {"v1.1"}
+
+
+def test_gk_factcheck_verdicts_come_from_the_qre_csv(corpus, catalogue, factcheck):
+    rows, _ = conv.build({"QRE-GK-A": corpus["QRE-GK-A"]}, topics=_topics(catalogue),
+                         catalogue=catalogue, factcheck=factcheck)
+    by_id = {r["external_id"]: r for r in rows["QRE-GK-A"]}
+    assert by_id["GKA-339"]["metadata"]["factcheck_verdict"] == "wrong_key"
+    assert by_id["GKA-001"]["metadata"]["factcheck_verdict"] == "confirmed"
+
+
+def test_invalid_exam_tier_fails_loudly(corpus, catalogue, factcheck):
+    qs = copy.deepcopy(corpus["QRE-QA-A"][:1])
+    qs[0]["exam_tier"] = "graduate"
+    _, errors = conv.build({"QRE-QA-A": qs}, topics=_topics(catalogue), catalogue=catalogue, factcheck=factcheck)
+    assert any("exam_tier must be foundation|officer" in e for e in errors["QRE-QA-A"])
+
+
+def test_same_question_over_different_case_stimuli_is_not_a_duplicate(corpus, catalogue, factcheck):
+    # GRB-518 (set 1) and GRB-522 (set 2) both ask "Which step is the last step?"
+    # with the same options; only the case data differs.
+    rows, errors = conv.build({"QRE-GIR-B": corpus["QRE-GIR-B"]}, topics=_topics(catalogue),
+                              catalogue=catalogue, factcheck=factcheck)
+    assert not errors["QRE-GIR-B"]
+    by_id = {r["external_id"]: r for r in rows["QRE-GIR-B"]}
+    a, b = by_id["GRB-518"], by_id["GRB-522"]
+    assert a["question_text"] == b["question_text"]
+    assert a["stimuli"][0]["content_text"] != b["stimuli"][0]["content_text"]
+    sb = SBStub({"subjects": [{"id": a["subject_id"]}],
+                 "topics": [{"id": a["topic_id"], "subject_id": a["subject_id"]}]})
+    preview = dry_run(sb, {"id": "a"}, json.dumps([a, b]).encode("utf-8"), "application/json")
+    assert preview["ok_count"] == 2, preview["rows"]
+    fps = {r["preview"]["fingerprint"] for r in preview["rows"]}
+    assert len(fps) == 2
+
+
+def test_row_without_stimuli_keeps_its_pre_04_fingerprint():
+    import hashlib
+    row = {"question_text": "What is 2 + 2?", "option_1": "4", "option_2": "5", "correct_option": "1"}
+    preview = dry_run(SBStub(), {"id": "a"}, json.dumps([row]).encode(), "application/json")
+    legacy = hashlib.sha256("what is 2 + 2?|4|5|0".encode("utf-8")).hexdigest()
+    assert preview["rows"][0]["preview"]["fingerprint"] == legacy
+
+
+def test_cli_dry_run_for_the_qre_pilot_batch(tmp_path, catalogue, capsys):
+    topics_csv = _write_topics_csv(tmp_path / "topics.csv", _topics(catalogue))
+    assert conv.main(["--topics", str(topics_csv), "--batch", "QRE-QA-A", "--dry-run"]) == 0
+    out = capsys.readouterr().out
+    assert "QRE-QA-A: 390 rows" in out and "tier {'foundation': 130, 'officer': 260}" in out
+
+
+def test_importer_rejects_an_invalid_exam_tier_in_metadata():
+    row = {"question_text": "Q?", "option_1": "A", "option_2": "B", "correct_option": "1",
+           "metadata": {"exam_tier": "graduate"}}
+    preview = dry_run(SBStub(), {"id": "a"}, json.dumps([row]).encode(), "application/json")
+    assert preview["error_count"] == 1

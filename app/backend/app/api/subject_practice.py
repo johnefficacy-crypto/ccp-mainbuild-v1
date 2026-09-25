@@ -63,6 +63,9 @@ _CALC_GYM_DURATION_SEC = 180
 class StartSubjectPracticeRequest(BaseModel):
     mode: str
     topic_id: UUID | None = None
+    # Topic modes serve authored rows of the learner's exam tier only; True adds
+    # the other tier's rows (REG-CORPUS-04). Ignored by non-topic modes.
+    include_other_tier: bool = False
 
 
 @router.post("/{subject_id}/practice/start")
@@ -113,9 +116,10 @@ def start_subject_practice(
             status_code=422,
             detail=f"practice mode {body.mode!r} is not available for this subject",
         )
+    extra = {"include_other_tier": body.include_other_tier} if handler in _TOPIC_HANDLERS else {}
     return handler(
         supabase, user_id=user_id, subject_id=str(subject_id),
-        topic_id=str(body.topic_id) if body.topic_id else None, exam_id=exam_id,
+        topic_id=str(body.topic_id) if body.topic_id else None, exam_id=exam_id, **extra,
     )
 
 
@@ -126,20 +130,21 @@ def _handle_english_writing(supabase, *, user_id, subject_id, topic_id, exam_id)
     return {"kind": "english_writing", "route": f"/app/study/practice/english/{session_id}"}
 
 
-def _handle_topic_pyq(supabase, *, user_id, subject_id, topic_id, exam_id) -> dict:
+def _handle_topic_pyq(supabase, *, user_id, subject_id, topic_id, exam_id, include_other_tier=False) -> dict:
     attempt_id = _launch_topic_pyq(
         supabase, user_id=user_id, subject_id=subject_id, topic_id=topic_id, exam_id=exam_id,
+        include_other_tier=include_other_tier,
     )
     return {"kind": "pyq_practice", "route": f"/app/study/mocks/attempts/{attempt_id}"}
 
 
-def _handle_timed_practice(supabase, *, user_id, subject_id, topic_id, exam_id) -> dict:
+def _handle_timed_practice(supabase, *, user_id, subject_id, topic_id, exam_id, include_other_tier=False) -> dict:
     # GQR-R10: identical server-owned topic assembly + scope gate as topic_pyq, plus a
     # server-owned countdown. Lands in the same objective attempt shell (which already
     # renders a timer when the frozen template carries duration_sec).
     attempt_id = _launch_topic_pyq(
         supabase, user_id=user_id, subject_id=subject_id, topic_id=topic_id, exam_id=exam_id,
-        seconds_per_question=_TIMED_SECONDS_PER_QUESTION,
+        seconds_per_question=_TIMED_SECONDS_PER_QUESTION, include_other_tier=include_other_tier,
     )
     return {"kind": "pyq_practice", "route": f"/app/study/mocks/attempts/{attempt_id}"}
 
@@ -211,6 +216,8 @@ _LAUNCH_HANDLERS = {
     MODE_WEEKLY_CURRENT_AFFAIRS: _handle_weekly_current_affairs,
     MODE_CALCULATION_GYM: _handle_calculation_gym,
 }
+# Handlers that launch topic practice and so take ``include_other_tier``.
+_TOPIC_HANDLERS = (_handle_topic_pyq, _handle_timed_practice)
 
 
 def _launch_english(supabase, *, user_id, subject_id, topic_id, exam_id):
@@ -226,7 +233,8 @@ def _launch_english(supabase, *, user_id, subject_id, topic_id, exam_id):
     return session.get("id")
 
 
-def _launch_topic_pyq(supabase, *, user_id, subject_id, topic_id, exam_id, seconds_per_question=None):
+def _launch_topic_pyq(supabase, *, user_id, subject_id, topic_id, exam_id, seconds_per_question=None,
+                      include_other_tier=False):
     if not topic_id:
         raise HTTPException(status_code=422, detail="topic_id is required for topic practice")
     if not exam_id:
@@ -244,6 +252,7 @@ def _launch_topic_pyq(supabase, *, user_id, subject_id, topic_id, exam_id, secon
             supabase, user_id=user_id, mode="topic", target_id=topic_id,
             exam_id=exam_id, limit=_PRACTICE_LIMIT,
             seconds_per_question=seconds_per_question,
+            include_other_tier=include_other_tier,
         )
     except PracticeInputError as exc:
         raise HTTPException(status_code=422, detail=str(exc))

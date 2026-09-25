@@ -63,12 +63,18 @@ def _now_iso() -> str:
 
 # ── Fingerprint ────────────────────────────────────────────────────────────────
 
-def compute_fingerprint(question_text: str, options: list[dict], correct_option_id: str | None) -> str:
+def compute_fingerprint(
+    question_text: str,
+    options: list[dict],
+    correct_option_id: str | None,
+    stimuli: list[dict] | None = None,
+) -> str:
     """Compute the canonical question fingerprint.
 
     Stable: lower-cased, whitespace-normalised question text
             + sorted option texts (alphabetical)
             + index of the correct option (position after sort)
+            + an authored row's own stimuli, when it has any (REG-CORPUS-04)
     """
     norm = " ".join(question_text.lower().split())
 
@@ -83,7 +89,7 @@ def compute_fingerprint(question_text: str, options: list[dict], correct_option_
             correct_idx = str(i)
             break
 
-    raw = f"{norm}|{opts_text}|{correct_idx}"
+    raw = f"{norm}|{opts_text}|{correct_idx}" + authored.stimulus_fingerprint_suffix(stimuli)
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()
 
 
@@ -145,6 +151,18 @@ def _fetch_options(supabase: Any, question_id: str) -> list[dict]:
         .select("*")
         .eq("question_id", question_id)
         .order("option_index")
+        .execute()
+        .data
+    ) or []
+
+
+def _fetch_own_stimuli(supabase: Any, question_id: str) -> list[dict]:
+    """This authored row's own stimulus copies, in display order."""
+    return (
+        supabase.table("mock_question_stimuli")
+        .select("content_text, display_order")
+        .eq("mock_question_id", question_id)
+        .order("display_order")
         .execute()
         .data
     ) or []
@@ -283,7 +301,8 @@ def create_question(supabase: Any, actor: dict, data: dict) -> dict:
     correct_option_id = correct_opt["id"] if correct_opt else None
 
     # Compute full fingerprint and update
-    fp = compute_fingerprint(q_text, opts, correct_option_id)
+    fp = compute_fingerprint(q_text, opts, correct_option_id,
+                             None if data.get("pyq_question_id") else stimuli)
     try:
         supabase.table("mock_question_bank").update({
             "correct_option_id": correct_option_id,
@@ -417,7 +436,12 @@ def update_question(supabase: Any, actor: dict, question_id: str, data: dict,
     q_text = updates.get("question_text") or q["question_text"]
     correct_opt = next((o for o in opts if o.get("is_correct")), None)
     correct_option_id = correct_opt["id"] if correct_opt else q.get("correct_option_id")
-    fp = compute_fingerprint(q_text, opts, correct_option_id)
+    # Projected PYQs keep the projection's fingerprint shape (no stimulus part).
+    if q.get("pyq_question_id"):
+        fp_stimuli = None
+    else:
+        fp_stimuli = new_stimuli if new_stimuli is not None else _fetch_own_stimuli(supabase, question_id)
+    fp = compute_fingerprint(q_text, opts, correct_option_id, fp_stimuli)
 
     # Check for fingerprint collision (unless publisher is overriding)
     existing_fp = supabase.table("mock_question_bank").select("id").eq("question_fingerprint", fp).neq("id", question_id).limit(1).execute().data or []

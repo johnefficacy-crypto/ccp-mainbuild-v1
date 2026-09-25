@@ -259,10 +259,13 @@ def _authored_unexpired(rows: list[dict], now_iso: str) -> list[dict]:
 
 
 def _authored_rows_for_targets(
-    sb, *, exam_id: str | None, target_ids: list[str], now_iso: str
+    sb, *, exam_id: str | None, target_ids: list[str], now_iso: str,
+    same_tier_only: bool = True,
 ) -> list[dict]:
     """Authored rows eligible for ``exam_id`` whose practised level is one of
-    ``target_ids``. Empty (and no bank read) for an exam with no topic-exam key."""
+    ``target_ids``. Empty (and no bank read) for an exam with no topic-exam key
+    and no body-agnostic section. Topic practice serves the exam's own tier
+    (``metadata.exam_tier``) unless ``same_tier_only`` is False."""
     ids = [str(t) for t in dict.fromkeys(target_ids) if t]
     if not ids:
         return []
@@ -287,7 +290,9 @@ def _authored_rows_for_targets(
     wanted = set(ids)
     return [
         r
-        for r in _authored_unexpired(authored_rows_for_exam(sb, exam_id, _fetch), now_iso)
+        for r in _authored_unexpired(
+            authored_rows_for_exam(sb, exam_id, _fetch, same_tier_only=same_tier_only), now_iso
+        )
         if (_row_level_id(r) or "") in wanted
     ]
 
@@ -334,7 +339,8 @@ def _cap_topic_rows(rows: list[dict], limit: int) -> list[dict]:
 
 
 def select_practice_rows(
-    sb, *, mode: str, exam_id: str | None, target_id: str, limit: int
+    sb, *, mode: str, exam_id: str | None, target_id: str, limit: int,
+    include_other_tier: bool = False,
 ) -> list[dict]:
     """Resolve the projected-PYQ bank rows for a practice request.
 
@@ -393,7 +399,8 @@ def select_practice_rows(
         # exam has a topic-exam key and the target topic carries it. An unkeyed
         # exam (every non-regulatory exam) adds nothing and reads no bank rows.
         pool = pool + _authored_rows_for_targets(
-            sb, exam_id=exam_id, target_ids=[target_id], now_iso=now_iso
+            sb, exam_id=exam_id, target_ids=[target_id], now_iso=now_iso,
+            same_tier_only=not include_other_tier,
         )
     if not pool:
         return []
@@ -728,6 +735,7 @@ def start_pyq_practice(
     blueprint_id: str | None = None,
     duration_sec: int | None = None,
     seconds_per_question: int | None = None,
+    include_other_tier: bool = False,
 ) -> dict:
     """Assemble and atomically start a PYQ practice attempt.
 
@@ -759,7 +767,10 @@ def start_pyq_practice(
     source, _ = _MODES[mode]
     limit = max(1, min(int(limit or _DEFAULT_LIMIT), _MAX_LIMIT))
 
-    rows = select_practice_rows(sb, mode=mode, exam_id=exam_id, target_id=target_id, limit=limit)
+    rows = select_practice_rows(
+        sb, mode=mode, exam_id=exam_id, target_id=target_id, limit=limit,
+        include_other_tier=include_other_tier,
+    )
     if not rows:
         return {"outcome": "empty_pool", "question_count": 0}
 
