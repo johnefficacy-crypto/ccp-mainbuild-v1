@@ -492,11 +492,11 @@ add("C3", "L1",
     "s.18A", "The notified-parties route (c) is Government notification, not ad hoc approval.", "conceptual", f"{SCRA}, s.18A (as amended by Finance Act, 2015)")
 
 add("C4", "L1",
-    "Under rule 19A of the SCRR, 1957, every listed company other than a public sector company shall maintain public shareholding of at least:",
+    "Under rule 19A of the SCRR, 1957, every listed company shall maintain public shareholding of at least:",
     "25%", [("10%", "minimum offer size for large issuers confused with continuous requirement"),
             ("20%", "understated threshold"),
             ("35%", "overstated threshold")],
-    ["Rule 19A(1): every listed company (other than a PSU) shall maintain public shareholding of at least 25%.",
+    ["Rule 19A(1): every listed company (the PSU carve-out was omitted by the SCRR amendment of 2014; PSUs got separate transition timelines) shall maintain public shareholding of at least 25%.",
      "Rule 19A(2): if it falls below, restore within a maximum of twelve months."],
     "SCRR r.19A(1)", "The continuous MPS is 25%, regardless of the initial offer size.", "conceptual",
     f"{SCRA} read with SCRR, 1957, r.19A")

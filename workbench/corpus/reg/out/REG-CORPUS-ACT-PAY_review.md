@@ -1859,7 +1859,7 @@ Prakash obtains a promissory note from its maker by fraud and endorses it for va
 **Working**
 
 1. Qadir is a holder in due course (s.9).
-2. s.53: a holder who derives title from a holder in due course has his rights, unless a party to the fraud.
+2. s.53: a holder who derives title from a holder in due course has the rights thereon of that holder in due course (s.53 itself has no fraud exception; in any case Rukmini was not a party to the fraud).
 3. Rukmini was not a party to the fraud → she has Qadir's rights against the maker.
 
 **Formula:** NI Act s.9, s.53  

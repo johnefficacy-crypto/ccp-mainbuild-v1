@@ -1,0 +1,1874 @@
+[
+ {
+  "id": "ACC-029",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Rule 3 classes (listed/Indian subs, PUC>=5cr, turnover>=100cr, Ind AS cos) with NBFC/HFC/bank/insurer exemption; P covered, Q not, R exempt; power companies not exempt since 2017 amendment.",
+  "source": "https://www.mca.gov.in/XBRL/Policy_specific_FAQs.html"
+ },
+ {
+  "id": "ACC-030",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Only A meets turnover <=250 cr and borrowings <=50 cr and is not in process of listing.",
+  "source": "Companies (AS) Rules 2021, Rule 2(1)(e); computed"
+ },
+ {
+  "id": "ACC-068",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "AS 29 para 30 no recognition; para 33 disclosed in approving authority's report, not in FS.",
+  "source": "https://indasaccess.icai.org/Volume-III/AS/asb.html?a=130"
+ },
+ {
+  "id": "ACC-113",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "10,00,000+7,50,000-1,20,000-4,00,000-1,00,000 = 11,30,000; dividend not a s.52(2) use.",
+  "source": "Companies Act 2013 s.52(2); computed"
+ },
+ {
+  "id": "ACC-138",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.13(d) 6% p.a. on loan for 6 months = 6,000.",
+  "source": "Indian Partnership Act 1932 s.13(d); computed"
+ },
+ {
+  "id": "ACC-142",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Div I (2021): current maturities->short-term borrowings; unpaid dividends->other current liabilities; capital advances->long-term loans and advances; loose tools->inventories.",
+  "source": "https://www.mca.gov.in/Ministry/pdf/ScheduleIII_24032021.pdf"
+ },
+ {
+  "id": "ACTB-007",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.24(1) caps denominations at Rs 10,000 set by Central Govt on Board recommendation; s.26(2) and s.33(2) Rs 200 crore floor confirm key B.",
+  "source": "https://rbidocs.rbi.org.in/rdocs/Publications/PDFs/RBIA1934170510.PDF (RBI Act ss.24, 26(2), 33(2))"
+ },
+ {
+  "id": "ACTB-010",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "RBI CRR Directions 2025 retain daily 90% minimum with 3% over Bank Rate for the day and 5% for succeeding days; recomputation gives Rs 2,32,877.",
+  "source": "https://taxguru.in/rbi/rbi-payments-banks-cash-reserve-ratio-statutory-liquidity-ratio-directions-2025.html (CRR Directions 2025 para 40(1); RBI Act s.42(3))"
+ },
+ {
+  "id": "ACTB-011",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Fortnight redefined to 1st-15th/16th-month-end w.e.f. 15 Dec 2025; 48cr x 9.5% x 15/365 + 30cr x 11.5% x 16/365 = Rs 33.86 lakh.",
+  "source": "RBI Act s.42(3); RBI (Commercial Banks - CRR and SLR) Amendment Directions 2025 (fortnight effective 15-12-2025)"
+ },
+ {
+  "id": "ACTB-021",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.45-IB keys liquid assets to deposits at close of last working day of second preceding quarter (30 June for Oct-Dec): 15% x 120 = Rs 18 crore.",
+  "source": "RBI Act s.45-IB"
+ },
+ {
+  "id": "ACTB-026",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Explanation to BR Act s.5(c) excludes a manufacturer accepting deposits merely to finance its own business.",
+  "source": "Banking Regulation Act 1949 s.5(b), s.5(c) Explanation"
+ },
+ {
+  "id": "ACTB-035",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.20(1)(b)(iii) company limb excludes Government companies; nephew (director is guarantor), firm and private company are all caught.",
+  "source": "Banking Regulation Act 1949 s.20(1)(b)"
+ },
+ {
+  "id": "ACTB-039",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Daily SLR penal scheme (3% first day, 5% succeeding days) yields [50x9.75% + 110x11.75%]/365 crore = Rs 4,87,671.",
+  "source": "BR Act s.24(4)-(5) read with RBI CRR/SLR Directions 2025"
+ },
+ {
+  "id": "ACTB-042",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.36AB(1) permits 'one or more' additional directors; the numerical-cap proviso was omitted by Act 1 of 1984; s.36AB(2) term up to 3 years at a time.",
+  "source": "https://indiankanoon.org/doc/690099/ (BR Act s.36AB; proviso omitted by Act 1 of 1984, s.31)"
+ },
+ {
+  "id": "ACTB-043",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.47A(1)(c): Rs 1 crore or twice amount whichever more (Rs 1.44 cr) plus up to Rs 1 lakh per day after the first (17 days) = Rs 1.61 crore.",
+  "source": "https://lawgist.in/banking-regulation-act/47A (BR Act s.47A(1)(c) r/w s.46(4))"
+ },
+ {
+  "id": "ACTB-045",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.3 excludes PACS; s.36AAA (via s.56, 2020) allows supersession of State-registered co-op bank boards after consulting State Govt; s.22 applies via s.56.",
+  "source": "Banking Regulation Act 1949 ss.3, 22, 56 (s.36AAA as applied); BR (Amendment) Act 2020"
+ },
+ {
+  "id": "ACTB-059",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "DICGC liability arises on liquidation (s.16(1)), schemes incl. amalgamation (s.16(2)) and s.18A restrictions, so A true and R false.",
+  "source": "DICGC Act 1961 ss.16(1), 16(2), 18A"
+ },
+ {
+  "id": "ACTB-062",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Premium is on assessable deposits excluding Govt, inter-bank and foreign Govt deposits: 2,150 cr x 0.12% / 2 = Rs 129 lakh.",
+  "source": "DICGC Act 1961 s.2(g), s.15"
+ },
+ {
+  "id": "ACTI-010",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.64UM(2) requires a licensed surveyor report for claims at or above the specified amount and the proviso preserves the insurer's right to settle at a different amount.",
+  "source": "https://indiankanoon.org/doc/1656199/ (Insurance Act s.64UM(2) and proviso)"
+ },
+ {
+  "id": "ACTI-011",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.38(3) 30 days from notice (3 Feb 2026) and s.38(4) claim to the Authority within 30 days of communication (28 Feb 2026).",
+  "source": "https://indiankanoon.org/doc/1556495/ (Insurance Act s.38(2)-(4))"
+ },
+ {
+  "id": "ACTI-023",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "IRDA Act s.4 (current text): Chairperson, not more than five whole-time and not more than four part-time members.",
+  "source": "https://ifsca.gov.in/CommonDirect/PreviewPdf?id=29709e474fe6b066fc0cb19f7d6aaf6e&fileName=IRDA_Act_1999_20260717_0229.pdf (IRDA Act s.4)"
+ },
+ {
+  "id": "ACTI-032",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Amended IRDA Act s.14(2)(n) empowers IRDAI to impose penalty as specified in s.102 Insurance Act for violations of the IRDA Act and its rules/regulations.",
+  "source": "IRDA Act 1999 s.14(2)(n) as amended 2025 (ifsca.gov.in consolidated text)"
+ },
+ {
+  "id": "ACTI-034",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Disputes insurer-intermediary s.14(2)(m); nomination Insurance Act s.39; supersession IRDA Act s.19; SAT appeal Insurance Act s.110.",
+  "source": "IRDA Act ss.14(2)(m), 19; Insurance Act ss.39, 110"
+ },
+ {
+  "id": "ACTI-040",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Surplus 760; reserve = min(190, 1080-1020) = 60; CFI 700; penalties go to the s.16A Policyholders' Education and Protection Fund, so C (775) is correctly wrong.",
+  "source": "IRDA Act 1999 ss.16, 16A as amended 2025 (ifsca.gov.in consolidated text)"
+ },
+ {
+  "id": "ACTI-043",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "PFRDA Act s.4: Chairperson, three whole-time members and three part-time members.",
+  "source": "https://indiankanoon.org/doc/53900733/ (PFRDA Act s.4)"
+ },
+ {
+  "id": "ACTI-046",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.12 applies the Act to NPS and pension schemes not regulated by other enactments and excludes EPF & MP Act 1952 schemes.",
+  "source": "PFRDA Act 2013 s.12"
+ },
+ {
+  "id": "ACTI-050",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.24 cap = higher of 26% and insurance limit (74% as stated hypothetically); aggregate 63% so headroom 11% x 300 = Rs 33 crore.",
+  "source": "https://indiankanoon.org/doc/53900733/ (PFRDA Act s.24)"
+ },
+ {
+  "id": "ACTI-066",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.24 cap is the higher of 26% and the insurance-sector limit, so 30% is permissible whether 74% (given) or 100% (current).",
+  "source": "PFRDA Act 2013 s.24; Insurance Act s.2(7A) as amended by Act 40 of 2025"
+ },
+ {
+  "id": "ACTI-067",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "IFSCA Act s.2 applies to IFSCs set up under s.18 of the SEZ Act 2005.",
+  "source": "IFSCA Act 2019 s.2"
+ },
+ {
+  "id": "ACTO-001",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "FEMA s.2(v)(i): residing in India for more than 182 days during the preceding financial year.",
+  "source": "https://www.indiacode.nic.in/bitstream/123456789/1988/1/A1999_42.pdf (FEMA s.2(v))"
+ },
+ {
+  "id": "ACTO-022",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.13(1) penalty up to thrice the sum involved: 3 x (USD 3,20,000 x 84) = Rs 8,06,40,000.",
+  "source": "FEMA 1999 s.13(1)"
+ },
+ {
+  "id": "ACTO-032",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.5(d) deal-value threshold (> Rs 2,000 crore with substantial business operations in India) applies and the de minimis exemption does not cover s.5(d) deals.",
+  "source": "Competition Act 2002 s.5(d), s.6(2) (Competition (Amendment) Act 2023; de minimis notification 2024)"
+ },
+ {
+  "id": "ACTO-033",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.6(2A) standstill is 150 days from notice; 2 Feb 2026 + 150 days = 2 Jul 2026.",
+  "source": "Competition Act 2002 s.6(2A), s.31(6) as amended 2023"
+ },
+ {
+  "id": "ACTO-048",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "LLP Act s.6(1) requires at least two partners with no statutory maximum.",
+  "source": "https://www.indiacode.nic.in/handle/123456789/2091 (LLP Act s.6)"
+ },
+ {
+  "id": "ACTO-052",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.7 Explanation (2021): resident = stayed at least 120 days during the financial year; Asha's 130 days suffices.",
+  "source": "https://www.mca.gov.in/content/dam/mca/pdf/llpAct2021_19082021.pdf (LLP Act s.7 Explanation)"
+ },
+ {
+  "id": "ACTO-063",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Absent LLP agreement, First Schedule gives equal sharing and no remuneration: Rs 12 lakh / 2 = Rs 6 lakh.",
+  "source": "LLP Act 2008 s.23(4), First Schedule"
+ },
+ {
+  "id": "ACTP-002",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "RBI now acts through the Payments Regulatory Board under amended s.3, operationalised by PRB Regulations 2025 which replaced BPSS.",
+  "source": "https://www.taxmann.com/post/blog/rbi-notifies-payments-regulatory-board-regulations (PSS Act s.3)"
+ },
+ {
+  "id": "ACTP-013",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.4 provisos exempt duly appointed agents of the payee and intra-group payments; existing systems had only six months.",
+  "source": "PSS Act 2007 s.4(1) provisos"
+ },
+ {
+  "id": "ACTP-024",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Penalty under s.30 is payable within 30 days of service of the demand notice: 5 Aug + 30 = 4 Sep 2026.",
+  "source": "PSS Act 2007 s.30"
+ },
+ {
+  "id": "ACTP-034",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "CICRA s.23(4): fine up to Rs 1 lakh plus up to Rs 5,000 for every day the default continues: 1 lakh + 40 x 5,000 = Rs 3 lakh.",
+  "source": "https://indiankanoon.org/doc/946659/ (CICRA s.23(4))"
+ },
+ {
+  "id": "ACTP-061",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "FRA s.21: company and every officer in default punishable with fine up to Rs 5,000 per day: 32 x 5,000 = Rs 1.60 lakh.",
+  "source": "https://www.advocatekhoj.com/library/bareacts/factoring2011/21.php (Factoring Regulation Act s.21)"
+ },
+ {
+  "id": "ACTP-072",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Exclude day of sight (s.24): 14 Oct + 60 days = 13 Dec; plus 3 days of grace (s.22) = 16 Dec 2026.",
+  "source": "Negotiable Instruments Act 1881 ss.22, 24"
+ },
+ {
+  "id": "ACTP-077",
+  "verdict": "fix_text",
+  "new_key": null,
+  "edit": "In STEPS step 2, replace 's.53: a holder who derives title from a holder in due course has his rights, unless a party to the fraud.' with 's.53: a holder who derives title from a holder in due course has the rights thereon of that holder in due course (s.53 itself has no fraud exception; in any case Rukmini was not a party to the fraud).'",
+  "reason": "Key D is correct but the explanation attributes a 'unless a party to the fraud' exception to s.53, which is not in the Indian statutory text.",
+  "source": "https://indiankanoon.org/doc/1132672/ (NI Act s.53)"
+ },
+ {
+  "id": "ACTP-080",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.142(2)(a) (inserted by NI (Amendment) Act 2015) vests jurisdiction where the payee's collecting branch is; R correctly explains A.",
+  "source": "Negotiable Instruments Act, 1881, s.142(2)(a) (Act 26 of 2015)"
+ },
+ {
+  "id": "ACTP-082",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.143A(1)(a), (4) and (6) match statements 1, 2 and 3 respectively; all correct.",
+  "source": "Negotiable Instruments Act, 1881, s.143A(1),(4),(6)"
+ },
+ {
+  "id": "ACTR-013",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Substituted s.12A (s.8 of IBC (Amendment) Act 2026, in force 26.05.2026 by S.O. 2625(E)) allows withdrawal on RP's application with 90% CoC voting share.",
+  "source": "https://ibbi.gov.in/uploads/legalframwork/2026-04-07-115842-i5nsk-7ed69ef2a4d23a8b0d472cc0fcd55e79.pdf; S.O. 2625(E) dated 22.05.2026"
+ },
+ {
+  "id": "ACTR-015",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "212-10=202; less class (b) 159 = 43; less class (c) 7 = 36 to unsecured FCs; stem already states security value covers the full claim, so the 2026 Explanation does not alter the result.",
+  "source": "IBC s.53(1) and Explanation to s.53(1)(b)(ii) (s.32, IBC (Amendment) Act 2026, in force 26.05.2026)"
+ },
+ {
+  "id": "ACTR-016",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Under the 2026 Explanation the relinquishing creditor ranks in (b) only to the ₹78 cr security value, so workmen get 12x84/90 = ₹11.20 cr; the old 8.40 answer is correctly used as the distractor.",
+  "source": "IBC s.53(1)(b) and Explanation to s.53(1)(b)(ii) (s.32, IBC (Amendment) Act 2026; S.O. 2625(E))"
+ },
+ {
+  "id": "ACTR-019",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.54A(1) MSME-only (true); s.54A(2)(e)/(3) now 51% after s.34(a)(iii) and s.34(b) of the 2026 Act came into force on 26.05.2026 (true); s.54D is 120 days, not 180 (false).",
+  "source": "IBC ss.54A, 54D; S.O. 2625(E) notifying s.34(a)(iii) and (b) of IBC (Amendment) Act 2026"
+ },
+ {
+  "id": "ACTR-028",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.13(3A) as amended in 2016 gives 15 days from receipt; 20 Feb 2026 + 15 = 7 Mar 2026.",
+  "source": "SARFAESI Act, 2002, s.13(3A) (Act 44 of 2016)"
+ },
+ {
+  "id": "ACTR-057",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.30(1) RDB Act: appeal to the Tribunal within 30 days from the date a copy of the Recovery Officer's order is issued; option C already worded correctly.",
+  "source": "Recovery of Debts and Bankruptcy Act, 1993, s.30(1), s.30A"
+ },
+ {
+  "id": "ACTR-067",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "SARFAESI s.37 makes remedies cumulative and Transcore (2008) 1 SCC 125 holds no withdrawal of the OA is needed; authority already corrected.",
+  "source": "SARFAESI Act s.37; RDB Act s.19(1) proviso; Transcore v. Union of India, (2008) 1 SCC 125"
+ },
+ {
+  "id": "ACTR-074",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.2(1)(u) covers equivalent-value property in India or abroad where proceeds are taken outside the country.",
+  "source": "Prevention of Money-laundering Act, 2002, s.2(1)(u)"
+ },
+ {
+  "id": "ACTR-079",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "FIU-IND is under the Department of Revenue, Ministry of Finance.",
+  "source": "https://fiuindia.gov.in/"
+ },
+ {
+  "id": "ACTR-080",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.5(5) 30 days -> 15 Feb 2026; s.5(1) 180 days from order -> 15 Jul 2026; arithmetic verified.",
+  "source": "Prevention of Money-laundering Act, 2002, s.5(1),(5)"
+ },
+ {
+  "id": "ACTR-086",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "9 Mar + 30 = 8 Apr 2026; + 180 = 5 Sep 2026; case text already uses 'him'.",
+  "source": "Prevention of Money-laundering Act, 2002, s.5(1),(5)"
+ },
+ {
+  "id": "ACTR-087",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.45(1) proviso applies only where the sum laundered, alone or with co-accused, is under ₹1 crore; joint ₹1.40 crore excludes it; proviso was not struck down.",
+  "source": "Prevention of Money-laundering Act, 2002, s.45(1) proviso"
+ },
+ {
+  "id": "ACTR-088",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.4: RI 3-7 years plus fine, ₹5 lakh cap removed by PML (Amendment) Act 2012; 10-year ceiling only for NDPS-linked cases.",
+  "source": "Prevention of Money-laundering Act, 2002, s.4 (Act 2 of 2013)"
+ },
+ {
+  "id": "ACTR-089",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.42: appeal to High Court within 60 days of communication; 12 Oct + 60 = 11 Dec 2026.",
+  "source": "Prevention of Money-laundering Act, 2002, s.42"
+ },
+ {
+  "id": "ACTS-010",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Proviso to s.11AA(1) deems unregistered pooling with corpus of ₹100 crore or more a CIS; ref already corrected.",
+  "source": "SEBI Act, 1992, s.11AA(1) proviso (Act 27 of 2014)"
+ },
+ {
+  "id": "ACTS-011",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.12(1A) and s.12(1B) support statements 1 and 2; s.12(3) proviso requires a hearing, so statement 3 is false.",
+  "source": "SEBI Act, 1992, s.12(1A),(1B),(3)"
+ },
+ {
+  "id": "ACTS-012",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.15T(3): 45 days from receipt of copy; 19 Jan + 45 = 5 Mar 2026.",
+  "source": "SEBI Act, 1992, s.15T(3)"
+ },
+ {
+  "id": "ACTS-017",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.15C 64 days = ₹64 lakh; s.15A(b) capped at ₹1 crore; s.15HB up to ₹1 crore; total ₹2.64 crore.",
+  "source": "SEBI Act, 1992, ss.15A, 15C, 15HB (as amended 2014)"
+ },
+ {
+  "id": "ACTS-020",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Second proviso to s.15-I(3) bars enhancement after 3 months from AO order or disposal of s.15T appeal, whichever is earlier; earlier of 12 Apr and 20 Mar = 20 Mar 2026.",
+  "source": "SEBI Act, 1992, s.15-I(3) second proviso"
+ },
+ {
+  "id": "ACTS-021",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.15F(a) as substituted in 2014: ₹1 lakh to ₹1 crore, no longer value-linked; key D (₹1 crore) is correct in this version.",
+  "source": "SEBI Act, 1992, s.15F(a) (Act 27 of 2014)"
+ },
+ {
+  "id": "ACTS-022",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "₹1 crore (15F(a)) + ₹14 lakh (15F(c), 5x excess) + ₹52 lakh (15A, 52 days) = ₹1.66 crore, which is key B in this version.",
+  "source": "SEBI Act, 1992, ss.15A, 15F(a),(c)"
+ },
+ {
+  "id": "ACTS-029",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.18A validates derivatives traded on a recognised stock exchange and settled on its clearing house, or those between notified parties under clause (c) inserted by Finance Act 2015; only option A matches.",
+  "source": "https://www.ifsca.gov.in/Document/Legal/75-the-securities-contracts-regulation-act-195612092020035255.pdf (SCRA s.18A; Act 20 of 2015, s.134)"
+ },
+ {
+  "id": "ACTS-030",
+  "verdict": "fix_text",
+  "new_key": null,
+  "edit": "Stem: replace 'every listed company other than a public sector company shall maintain' with 'every listed company shall maintain'. STEPS: replace 'Rule 19A(1): every listed company (other than a PSU)' with 'Rule 19A(1): every listed company (the PSU carve-out was omitted by the SCRR amendment of 2014; PSUs got separate transition timelines)'.",
+  "reason": "Key 25% is right, but the 'other than a public sector company' carve-out in r.19A(1) was omitted in 2014 (shown bracketed in the current text), so the stem and explanation wrongly imply PSUs are exempt.",
+  "source": "SCRR, 1957, r.19A(1) as amended 2014 (https://indiankanoon.org/doc/96433855/ shows the omitted words bracketed)"
+ },
+ {
+  "id": "ACTS-031",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.2(h) covers MF units, index derivatives and SARFAESI security receipts; a bank FD receipt is not securities.",
+  "source": "Securities Contracts (Regulation) Act, 1956, s.2(h)"
+ },
+ {
+  "id": "ACTS-036",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Non-member contract in a s.13-notified area is 'illegal'; 20-day delivery is not a spot delivery contract under s.2(i), so s.18 does not save it; wording already fixed.",
+  "source": "https://www.ifsca.gov.in/Document/Legal/75-the-securities-contracts-regulation-act-195612092020035255.pdf (SCRA ss.2(i), 13, 18)"
+ },
+ {
+  "id": "ACTS-040",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.23E max ₹25 crore; s.23A(a) covers returns to the Board and is capped at ₹1 crore; total ₹26 crore.",
+  "source": "https://www.ifsca.gov.in/Document/Legal/75-the-securities-contracts-regulation-act-195612092020035255.pdf (SCRA ss.23A(a), 23E)"
+ },
+ {
+  "id": "ACTS-047",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Public excludes promoter group, subsidiaries and DR-custodian shares (SCRR r.2(d),(e)); 25% of 8 crore minus 1.36 crore = 64 lakh via OFS.",
+  "source": "https://www.sebi.gov.in/sebi_data/attachdocs/1399433501593.pdf (SCRR r.2(d),(e), 19A)"
+ },
+ {
+  "id": "ACTS-052",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.14(3): issuer to issue the certificate within 30 days of intimation from the depository; ref already corrected.",
+  "source": "https://www.sebi.gov.in/acts/act03a.pdf (Depositories Act s.14(3))"
+ },
+ {
+  "id": "ACTS-066",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "ss.18 and 19 support statements 1 and 2; s.22(1) as amended in 2004 allows a complaint 'by any person', so statement 3 is true; key A (1, 2 and 3) is correct.",
+  "source": "https://www.sebi.gov.in/acts/act03a.pdf (Depositories Act ss.18, 19, 22)"
+ },
+ {
+  "id": "CAA-001",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.103(2)(a): adjourned to same day next week, same time/place or as Board determines; key B correct.",
+  "source": "Companies Act 2013 s.103(2)(a); https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAA-009",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.423: 60 days from receipt (2 May 2026) plus further period not exceeding 60 days gives 1 July 2026.",
+  "source": "Companies Act 2013 s.423 proviso; https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAA-040",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.410: Chairperson plus Judicial and Technical Members not exceeding eleven.",
+  "source": "Companies Act 2013 s.410; https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAA-042",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Rule 3 records at overall turnover >= Rs 35 cr; Rule 4(1) Table A audit needs overall >= Rs 50 cr AND covered-product turnover >= Rs 25 cr; Rs 22 cr fails, so records only.",
+  "source": "Companies (Cost Records and Audit) Rules 2014, r.3, r.4(1) (MCA)"
+ },
+ {
+  "id": "CAA-045",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Small private company is outside the r.9B demat mandate; s.56(4)(c) one month from receipt gives 5 Feb 2026.",
+  "source": "Companies Act 2013 s.56(4)(c); SCD Rules r.9B; https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAA-047",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.123(4): dividend incl. interim deposited in a scheduled bank within five days of declaration.",
+  "source": "Companies Act 2013 s.123(4); https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAA-065",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Dividend Rules r.3: rate cap 10% = Rs 5 cr; drawal cap 10% of 80 = Rs 8 cr less current loss Rs 4 cr = Rs 4 cr; residual reserves 22 >= 7.5; max Rs 4 cr.",
+  "source": "Companies (Declaration and Payment of Dividend) Rules 2014, r.3"
+ },
+ {
+  "id": "CAA-066",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "18 - 3 - 1.5 - 5 - 2 = Rs 6.5 cr under s.123(1)(a) proviso and fourth proviso to s.123(1); cites already corrected.",
+  "source": "Companies Act 2013 s.123(1); https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAA-077",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Rule 12A (GSR 113(E), w.e.f. 1 Apr 2021, not time-bound) fixes the minimum at 7 days under amended s.62(1)(a)(i), max 30; s.62(2) notice at least 3 days before opening; key D (reordered options) correct.",
+  "source": "Companies Act 2013 s.62(1)(a)(i), s.62(2); SCD Rules r.12A (GSR 113(E), 11 Feb 2021)"
+ },
+ {
+  "id": "CAA-079",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.62(1)(c) needs a special resolution and registered-valuer price; r.13 requires allotment within 12 months of the SR; Board unanimity cannot replace the SR.",
+  "source": "Companies Act 2013 s.62(1)(c); SCD Rules 2014 r.13"
+ },
+ {
+  "id": "CAA-086",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.152(6) Explanation/s.149(13) excludes IDs from rotation count; s.149(12) limited liability; s.149(9) bars stock options; Sch IV para VII separate meeting; key C.",
+  "source": "Companies Act 2013 s.149(9),(12),(13), s.152(6), Sch IV; https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAA-088",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.123(3) proviso: loss up to preceding quarter caps interim rate at 3-year average 12% -> Rs 3 cr.",
+  "source": "Companies Act 2013 s.123(3) proviso; https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAA-091",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.53(2) void; s.53(3) (substituted 2019) penalty up to lower of amount raised (Rs 8 lakh) and Rs 5 lakh, refund with 12% p.a. interest.",
+  "source": "Companies Act 2013 s.53(2),(3); https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAA-095",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.185(1)(a) bars loans to a director of the company or of its holding company; B, C, D are s.185(3) exceptions.",
+  "source": "Companies Act 2013 s.185(1),(3); https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAA-104",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "NCLAT Chairperson holds office till 70 (Members 67) under s.413 as enacted and the MBA directions; key B correct and ref already updated.",
+  "source": "Companies Act 2013 s.413; Madras Bar Association v. UoI, 2025 INSC 1330"
+ },
+ {
+  "id": "CAA-105",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.411(1) Chairperson SC Judge or HC Chief Justice; age 70 for Chairperson, 67 for all Members; statement 4 false; key A.",
+  "source": "Companies Act 2013 s.411(1), s.413; https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAA-111",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.174(1) Explanation counts VC participants for quorum; r.4 restricted-items list omitted by 2021 amendment; s.173(2) recording requirement; key A.",
+  "source": "Companies Act 2013 s.173(2), s.174(1); Companies (Meetings of Board and its Powers) Amendment Rules 2021"
+ },
+ {
+  "id": "CAA-117",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "GSR 583(E) as corrected by 13 Jul 2017 corrigendum needs turnover < Rs 50 cr AND borrowings < Rs 25 cr; Rs 28 cr borrowings defeat exemption; key B.",
+  "source": "Companies Act 2013 s.143(3)(i); MCA GSR 583(E) 13 Jun 2017 and corrigendum 13 Jul 2017"
+ },
+ {
+  "id": "CAB-002",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "9.60 - 2.10 - 0.45 - 1.25 - 0.30 = Rs 5.50 cr; cites (s.123(1)(a) proviso, fourth proviso) correct.",
+  "source": "Companies Act 2013 s.123(1); https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAB-008",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.124(2): 12% p.a.; 6,00,000 x 12% x 60/365 = Rs 11,836.",
+  "source": "Companies Act 2013 s.124(2); https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAB-012",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.125(3)(a) refunds and (d) Tribunal-sanctioned class-action expenses are permitted; market-price loss compensation is not.",
+  "source": "Companies Act 2013 s.125(3); https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAB-017",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.135(5) second proviso: non-ongoing unspent to Sch VII fund within 6 months; s.135(6): ongoing to Unspent CSR a/c within 30 days, then Sch VII fund within 30 days after third FY.",
+  "source": "Companies Act 2013 s.135(5),(6); https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAB-028",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.141(3)(i) disqualification correct; management and outsourced financial services barred outright under s.144(g),(h).",
+  "source": "Companies Act 2013 s.141(3)(i), s.144; https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAB-032",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.140(2) with Audit Rules r.8: ADT-3 with company and Registrar within 30 days -> 20 July 2026.",
+  "source": "Companies Act 2013 s.140(2); Companies (Audit and Auditors) Rules 2014 r.8"
+ },
+ {
+  "id": "CAB-033",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.168(2) effective from later of receipt and specified date (31 May 2026); r.15 DIR-12 within 30 days; no Board acceptance needed.",
+  "source": "Companies Act 2013 s.168; Companies (Appointment and Qualification of Directors) Rules 2014 r.15"
+ },
+ {
+  "id": "CAB-039",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.188(3) three-month ratification, second-proviso voting bar and ordinary-course arm's-length carve-out are all correct; key C.",
+  "source": "Companies Act 2013 s.188(1) provisos, s.188(3); https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAB-046",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "PAS-4 to identified persons (r.14), no renunciation (s.42(3) proviso), payment from subscriber's bank account (s.42(4), r.14); key B.",
+  "source": "Companies Act 2013 s.42(3),(4); Companies (Prospectus and Allotment of Securities) Rules 2014 r.14"
+ },
+ {
+  "id": "CAB-048",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.26(5): expert independence, written consent not withdrawn before delivery, and statement in prospectus are all required.",
+  "source": "Companies Act 2013 s.26(5); https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAB-051",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.63(1) sources: free reserves + SP + CRR, excluding revaluation reserve: 18 + 42 + 6 + 9 = Rs 75 cr.",
+  "source": "Companies Act 2013 s.63(1); https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAB-055",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.31(1) validity up to one year from opening of first offer, no further prospectus; s.31(2) information memorandum; statement 4 false; stem already reworded.",
+  "source": "Companies Act 2013 s.31; https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAB-057",
+  "verdict": "fix_text",
+  "new_key": null,
+  "edit": "Replace TRAP 'Count back three clear days from the opening date.' with 'Count back three days from the opening date (16 − 3 = 13 November).'",
+  "reason": "Key A (13 Nov) is right under s.32(2) 'at least three days prior', but the trap's 'three clear days' logic would give 12 November, contradicting the key.",
+  "source": "Companies Act 2013 s.32(2); https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAB-061",
+  "verdict": "fix_text",
+  "new_key": null,
+  "edit": "In the stem, change 'The interest for which the directors ... are liable under s.39(3) read with Rule 11 is (365-day year):' to 'The interest for the 40-day period of delay beyond the 15-day window, for which the directors ... are liable under s.39(3) read with Rule 11(1), is (365-day year):'",
+  "reason": "PAS r.11(1) imposes 15% p.a. interest but does not say when it starts, so option A (Rs 8,13,699 = 55 days from closure) is also defensible unless the stem fixes the 40-day delay period.",
+  "source": "Companies (Prospectus and Allotment of Securities) Rules 2014 r.11(1); Companies Act 2013 s.39(3)"
+ },
+ {
+  "id": "CAB-063",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.66(1) SR + Tribunal and deposit-arrears bar; s.66(2) notices with 3-month deemed no-objection; s.66(8) excludes buy-back; key C.",
+  "source": "Companies Act 2013 s.66; https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAB-064",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.77(1) as amended 2019: 30 days; up to 60 days with additional fees; further 60 days with ad valorem fees; day 74 -> ad valorem.",
+  "source": "Companies Act 2013 s.77(1) provisos; https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAB-066",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "r.18(7)(b)(iv)(B) DRR 10% of Rs 50 cr = Rs 5 cr; r.18(7)(b)(v) 15% of Rs 20 cr maturing = Rs 3 cr by 30 April.",
+  "source": "Companies (Share Capital and Debentures) Rules 2014 r.18(7) (amended 16 Aug 2019)"
+ },
+ {
+  "id": "CAB-068",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.71(1) SR for convertibles; s.71(2) bars voting debentures; r.18(1) security on specific assets of company/holding/subsidiary/associate; key B.",
+  "source": "Companies Act 2013 s.71(1),(2); SCD Rules 2014 r.18(1)"
+ },
+ {
+  "id": "CAB-070",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "SCD r.6(2)(c): duplicate certificate within 3 months (unlisted) / 45 days (listed) of complete documents; key C.",
+  "source": "Companies (Share Capital and Debentures) Rules 2014 r.6(2)(c)"
+ },
+ {
+  "id": "CAB-081",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.103(2)(a),(b) and proviso make 1-3 true; s.103(3) makes members present the quorum at the adjourned meeting, so 4 is false; key D.",
+  "source": "Companies Act 2013 s.103(2),(3); https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "CAB-095",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Company now unlisted with PUC Rs 150 cr (within r.3 class); later of next Board meeting (20 Aug) and 3 months (1 Aug) = 20 Aug 2026.",
+  "source": "Companies (Appointment and Qualification of Directors) Rules 2014 r.3 second proviso"
+ },
+ {
+  "id": "CAB-100",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.419(2) Principal Bench at New Delhi; s.419(3) two-member Bench; s.424(1) not bound by CPC; IBC s.60 AA; key B.",
+  "source": "Companies Act 2013 s.419(2),(3), s.424(1); IBC 2016 s.60"
+ },
+ {
+  "id": "CAB-113",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "With the appointee now the MD's son (a relative under r.4), goods Rs 58 cr and lease Rs 7 cr are below 10% of turnover (Rs 62 cr); land Rs 27 cr >= 10% of net worth (Rs 25 cr) and Rs 3 lakh p.m. > Rs 2.5 lakh need an OR; key D.",
+  "source": "Companies Act 2013 s.188(1), s.2(76),(77); Companies (Meetings of Board and its Powers) Rules 2014 r.15(3); Specification of Definitions Rules r.4"
+ },
+ {
+  "id": "CAB-117",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Audit Rules r.7(2) 30 days from 3 Mar 2027 = 2 Apr 2027; r.7(3) 60 days from 10 May 2027 = 9 Jul 2027.",
+  "source": "Companies Act 2013 s.140(1); Companies (Audit and Auditors) Rules 2014 r.7(2),(3)"
+ },
+ {
+  "id": "CAB-122",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.42(8) PAS-3 within 15 days; s.42(6) separate account and s.42(4) proviso no utilisation until allotment and return filed; r.9A demat mandate makes 3 false.",
+  "source": "Companies Act 2013 s.42(4),(6),(8); SCD Rules r.9A"
+ },
+ {
+  "id": "CAB-124",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Premium 5% x Rs 6.00 cr = Rs 0.30 cr out of SP (s.52(2)(d), s.55(2)(d)(ii)); SP balance 0.90 - 0.30 = Rs 0.60 cr.",
+  "source": "Companies Act 2013 s.52(2)(d), s.55(2)(d); https://www.indiacode.nic.in/handle/123456789/2114"
+ },
+ {
+  "id": "ECO-003",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "GVA_BP = GVA_FC + production taxes - production subsidies; D is the GVA->GDP step.",
+  "source": "MoSPI/SNA 2008"
+ },
+ {
+  "id": "ECO-027",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "20,000+600-250 = 20,350.",
+  "source": "computed"
+ },
+ {
+  "id": "ECO-054",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "M0 = currency in circulation + bankers' deposits with RBI + other deposits with RBI.",
+  "source": "https://ies.gov.in/arthapedia/concept/money-supply"
+ },
+ {
+  "id": "ECO-142",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Art. 112 mandates the Annual Financial Statement.",
+  "source": "Constitution of India Art. 112"
+ },
+ {
+  "id": "ECO-162",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Loan recovery, disinvestment and borrowings are capital receipts; dividend is non-tax revenue.",
+  "source": "https://www.indiabudget.gov.in/doc/Budget_at_Glance/bag5.pdf"
+ },
+ {
+  "id": "ECO-170",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "1, 2, 4 true; Rajya Sabha cannot amend a Money Bill (Art. 109).",
+  "source": "Constitution Arts. 109, 116"
+ },
+ {
+  "id": "ECO-193",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "RBI Act s.45ZB six-member MPC; Governor's casting vote under s.45ZI.",
+  "source": "RBI Act 1934 ss.45ZB, 45ZI"
+ },
+ {
+  "id": "ECO-200",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "-260+160-45+115 = -30; capital/financial account items excluded.",
+  "source": "computed"
+ },
+ {
+  "id": "ECO-205",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Q3 at 5.9% breaks the run; Q4-Q6 all >6% => failure at end-Q6.",
+  "source": "computed"
+ },
+ {
+  "id": "ECO-211",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "NDI Rules r.2 FDI definition incl. continuation proviso; greenfield/brownfield correct; automatic route needs no approval.",
+  "source": "FEMA (NDI) Rules 2019 r.2"
+ },
+ {
+  "id": "ECO-218",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "YoY 7.00%, 7.32%, 7.10% all above 6% for three consecutive quarters.",
+  "source": "computed"
+ },
+ {
+  "id": "ENA-181",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Only C uses the noun 'effect' correctly ('come into effect'); A, B, D need the verb 'affect'.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-184",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Writing materials are 'stationery'; A-C correctly use 'stationary' (not moving).",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-185",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Only A uses the verb 'advise'; B-D need the noun 'advice'.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-186",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Separate age groups are 'discrete'; B-D correctly use 'discreet' (tactful).",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-187",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Only B uses 'creditable' (praiseworthy); A, C, D need 'credible'.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-188",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "A speaker implies rather than infers; A, C, D correctly use 'infer' (deduce).",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-189",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Under the exam-standard distinction only A uses 'disinterested' (impartial); B-D mean 'uninterested'.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-190",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Economy-level reforms are 'economic'; A-C correctly use 'economical' (thrifty/sparing).",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-191",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Only C is correct; A and D need 'compliment(ed)', B needs 'complimentary'.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-192",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "A distinguished scientist is 'eminent'; A-C correctly use 'imminent'.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-193",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Only C uses 'ingenious' (clever); A, B, D need 'ingenuous'.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-195",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Only B uses 'elicit' (draw out); A, C, D need 'illicit'.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-196",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Fixed collocation 'fond of'; no other option is idiomatic.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-197",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Put off' = postpone; the other particles do not fit the meaning.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-199",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Run into' = meet by chance; other particles are unidiomatic here.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-200",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Exactly at 9:15 as scheduled' fixes the punctual sense 'on time'; 'in time' means early enough.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-201",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Come up with' = produce a proposal; other particles do not form a fitting phrasal verb.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-202",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Fixed phrasal verb 'do away with' = abolish.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-203",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Hinge on' = depend on; no other option is idiomatic.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-204",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Look into' = investigate; the other options do not mean investigate.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-205",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Eat into' = gradually reduce; other options are unidiomatic.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-206",
+  "verdict": "fix_text",
+  "new_key": null,
+  "edit": "Replace option A 'from' with 'for'.",
+  "reason": "'Averse from' is an older but still recorded British construction (Fowler/OED; MW says averse is 'usually' used with 'to'), so option A is defensible alongside the key 'to'.",
+  "source": "https://www.merriam-webster.com/dictionary/averse"
+ },
+ {
+  "id": "ENA-207",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Fixed collocation 'enter into an agreement'.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-208",
+  "verdict": "fix_text",
+  "new_key": null,
+  "edit": "Replace option A 'down' with 'over'.",
+  "reason": "'Phase down' (reduce in stages) is a recognised phrasal verb and gives a grammatical sentence ('phase down older vehicles'), competing with the key 'phase out'.",
+  "source": "https://www.merriam-webster.com/dictionary/phase%20down"
+ },
+ {
+  "id": "ENA-209",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Fixed collocation 'consistent with'.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENA-210",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Call off' = cancel; 'called out/in/up' do not fit a strike being ended.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-136",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Standard collocation is 'make a mistake'.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-137",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "A candidate takes an exam; 'passed' changes the meaning and 'made' is wrong.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-138",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Affect' (influence) is required; 'effected' means brought about.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-139",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Discuss' is transitive and takes no preposition.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-140",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Stative 'have' (possess) is not used in the continuous.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-141",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Fixed idiom is 'turn a blind eye to'.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-142",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Fixed phrase is 'come into effect'.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-143",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Avail' needs the reflexive 'avail oneself of'; only 'made use of' is standard among options.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-144",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Was made up for' is the correct passive of 'make up for'; alternatives are wrong.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-145",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Revert back' is redundant/misused; 'reply' is the only standard option.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-146",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Passive idiom is 'be aimed at + gerund'; other options are ungrammatical.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-147",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Bent upon' takes a gerund: 'bent upon resigning'.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-148",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Approval on' is unidiomatic; 'has approved' is correct and concise.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-149",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Wish to avail themselves of' fixes both the stilted phrasing and the reflexive 'avail'.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-150",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Not...any' removes the double negative while keeping the passive subject 'Applications'.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-301",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Break the ice' = relieve initial tension/awkwardness.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-302",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'A piece of cake' = a very easy task.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-303",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Once in a blue moon' = very rarely.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-304",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Beat about the bush' = avoid the main point.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-305",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Hit the nail on the head' = describe exactly right.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-306",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Back to square one' = start again from the beginning.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-307",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Pie in the sky' = an unrealistic hope.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-308",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Nip in the bud' = stop at an early stage.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-309",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Burn one's boats' = leave oneself no way back.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-310",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Open a can of worms' = expose many complicated problems.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-311",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'In the doldrums' = stagnant/inactive.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-312",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Bury the hatchet' = end a quarrel.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-313",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Play one's cards close to one's chest' = keep intentions secret.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-314",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Sell oneself short' = undervalue oneself.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-315",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Cut the Gordian knot' = resolve a difficult problem boldly.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-316",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Look after' = take care of.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-317",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Call off' = cancel (not postpone).",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-318",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Give up' = stop.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-319",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Put out' = extinguish.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-320",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "In context (old friend, station) 'ran into' = met by chance, not collided.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-321",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Look into' = investigate.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-322",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Lay off' = dismiss workers for lack of work.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-323",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Put someone off (doing)' = discourage.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-324",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Brush aside' = dismiss.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-325",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Negotiations 'break down' = fail.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-326",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Phase out' = withdraw gradually.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-327",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Come across' = find by chance.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-328",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Put up with' = tolerate.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-329",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Write off' a debt = remove from accounts as unrecoverable.",
+  "source": "standard usage"
+ },
+ {
+  "id": "ENB-330",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "'Stand in for' = substitute for.",
+  "source": "standard usage"
+ },
+ {
+  "id": "FINA-016",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "1.725/98.275 x 364/91 = 7.0211% (365-day basis gives distractor 7.0404%).",
+  "source": "https://www.rbi.org.in/Scripts/FAQView.aspx?Id=79; computed"
+ },
+ {
+  "id": "FINA-062",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "2.00+8.50+16.50+12.00+4.00 = 43.00 cr.",
+  "source": "computed"
+ },
+ {
+  "id": "FINA-067",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.35A(1) grounds match option B.",
+  "source": "Banking Regulation Act 1949 s.35A"
+ },
+ {
+  "id": "FINA-088",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Stem now frames limits as Board-approved; 50% x 4,000 = 2,000 cr.",
+  "source": "RBI Call, Notice and Term Money Markets Directions 2021; computed"
+ },
+ {
+  "id": "FINA-130",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.9 fungibility, s.10 rights, s.14 opt-out, s.16 indemnity.",
+  "source": "Depositories Act 1996 ss.9,10,14,16"
+ },
+ {
+  "id": "FINA-132",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "LODR Reg 40(1): transfers only in demat since 1 Apr 2019; dematerialisation still allowed; R explains A.",
+  "source": "SEBI LODR Reg 40(1)"
+ },
+ {
+  "id": "FINA-149",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "FFS managed by SIDBI, invests via SEBI-registered AIFs, not directly.",
+  "source": "https://www.startupindia.gov.in/content/sih/en/government-schemes/fund-of-funds-for-startups.html"
+ },
+ {
+  "id": "FINA-150",
+  "verdict": "fix_text",
+  "new_key": null,
+  "edit": "In the stem assumption, replace '40% of the anchor portion reserved — one-third for domestic mutual funds and the balance for life insurers and pension funds' with '40% of the anchor portion reserved — one-third of the anchor portion (33.33%) for domestic mutual funds and the remaining 6.67% of the anchor portion for life insurers and pension funds'.",
+  "reason": "Key A (1.80 cr; MF 0.60 cr) is right, but the stem wording reads as one-third of the 40% reservation (0.24 cr), whereas SEBI's framework reserves one-third of the whole anchor portion for MFs plus ~6.67% for LI/PF.",
+  "source": "https://www.sebi.gov.in/sebi_data/meetingfiles/sep-2025/1758535137982_1.pdf"
+ },
+ {
+  "id": "FINA-158",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "CBDT/CBIC under CBR Act 1963; GST Council Art. 279A; ITAT final fact-finding appellate body.",
+  "source": "Central Boards of Revenue Act 1963; Constitution Art. 279A"
+ },
+ {
+  "id": "FINA-163",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "0.25% x 27,00,000 x2 + 0.5% x 12,00,000 = 19,500; s.9(5) supplies excluded.",
+  "source": "CGST Act s.52; Notfn 15/2024-CT; computed"
+ },
+ {
+  "id": "FINB-005",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "ICDR Reg 29: cap <=120% of floor and >=105% of floor.",
+  "source": "SEBI ICDR 2018 Reg 29"
+ },
+ {
+  "id": "FINB-019",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "NCRPS min tenure 3 yrs, public issue rating >=AA-; must be redeemable.",
+  "source": "SEBI (NCS) Regulations 2021"
+ },
+ {
+  "id": "FINB-023",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Trustee/IM/PM/sponsor roles match D.",
+  "source": "SEBI (InvIT) Regulations 2014"
+ },
+ {
+  "id": "FINB-026",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "ZCZP min issue Rs50 lakh, min application now Rs1,000; ZCZP only for NPOs => 1 and 2.",
+  "source": "https://www.taxmanagementindia.com/web/tmi_highlights_details.asp?id=86692"
+ },
+ {
+  "id": "FINB-031",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "s.18A: derivatives valid if traded on recognised exchange and settled via its clearing house/corporation.",
+  "source": "SCRA 1956 s.18A"
+ },
+ {
+  "id": "FINB-032",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Rs3,200 cr lies in Rs1,600-4,000 cr slab => Rs400 cr (unchanged by 2026 amendment).",
+  "source": "SCRR Rule 19(2)(b)"
+ },
+ {
+  "id": "FINB-065",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Basel II para 644: includes legal, excludes strategic and reputational risk.",
+  "source": "https://www.bis.org/publ/bcbs128.pdf"
+ },
+ {
+  "id": "FINB-091",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "0.15 x (310+470)/2 = 58.50 cr; negative year excluded.",
+  "source": "Basel II para 649; computed"
+ },
+ {
+  "id": "FINB-099",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "CROMS market repo platform; TREPS replaced CBLO (Nov 2018); tri-party agent is not the lender.",
+  "source": "https://www.ccilindia.com/"
+ },
+ {
+  "id": "FINB-110",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "NEFT/RTGS RBI-operated; NPCI not-for-profit under PSS Act; NEFT is DNS in half-hourly batches.",
+  "source": "https://www.rbi.org.in/"
+ },
+ {
+  "id": "FINB-115",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "EOD cap Rs2 lakh per individual (2021, unchanged); debit not credit cards; no lending.",
+  "source": "https://www.business-standard.com/amp/article/finance/payments-banks-can-now-hold-max-balance-of-rs-2-lakh-per-customer-121040801491_1.html"
+ },
+ {
+  "id": "FINB-128",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "S.O. 3030(E) 12 Jun 2026: individual PROI <10%, aggregate 24%; headroom 4,79,99,999-10,00,000 = 4,69,99,999 (individual cap binds).",
+  "source": "https://taxguru.in/rbi/fema-ndi-amendment-rules-2026-foreign-individual-investment-liberalised.html; computed"
+ },
+ {
+  "id": "FINB-129",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Chit funds-States, Nidhi-MCA, ULIP-IRDAI, commodity derivatives-SEBI.",
+  "source": "Chit Funds Act 1982; Companies Act s.406"
+ },
+ {
+  "id": "FINB-132",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "IOSCO Madrid, BIS Basel (hosts BCBS), FATF Paris, FSB Basel.",
+  "source": "https://www.fsb.org/"
+ },
+ {
+  "id": "FINB-159",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "SEBI circular 26 Feb 2026: large cap >=80%, mid cap >=65%, multi cap >=25% each, focused <=30 stocks.",
+  "source": "https://upstox.com/news/personal-finance/mutual-funds/sebi-new-classification-rules-for-equity-mutual-fund-schemes-2026-all-you-need-to-know/article-189995/"
+ },
+ {
+  "id": "FINB-168",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Equity-oriented FoF BER cap 2.10% under MF Regs 2026; 0.9+1.6 = 2.5% breach; own max 0.50%.",
+  "source": "https://www.kotakmf.com/Information/blogs/what-is-expense-ratio-in-mutual-fund; computed"
+ },
+ {
+  "id": "FINC-074",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Total income 17,75,000; slab tax 1,55,000 + 4% cess = 1,61,200.",
+  "source": "computed"
+ },
+ {
+  "id": "FINC-075",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Esha 11,85,000 fully rebated; Farhan slab tax 62,250 capped at 15,000 by marginal relief + cess = 15,600.",
+  "source": "computed"
+ },
+ {
+  "id": "GKA-339",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "G.S.R. 108(E) 4 Feb 2026: 10-yr age, Rs200 cr turnover, split-up/reconstruction excluded => all three.",
+  "source": "https://taxguru.in/corporate-law/comprehensive-guide-indias-2026-startup-redefinition.html"
+ },
+ {
+  "id": "GKB-151",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Wheat is the principal rabi crop; others kharif.",
+  "source": "https://ncert.nic.in/textbook/pdf/jess104.pdf"
+ },
+ {
+  "id": "GKB-347",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "MGNREGA s.3: 100 days per household; VB-G RAM G Act in force from 1 Jul 2026.",
+  "source": "https://www.business-standard.com/india-news/vb-g-ram-g-replacing-mgnrega-to-come-into-force-across-india-from-july-1-126051100540_1.html"
+ },
+ {
+  "id": "GKB-351",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "5 km/10% extra wage and one-third women true; allowance trigger was 15 days.",
+  "source": "MGNREGA 2005 Schedule II"
+ },
+ {
+  "id": "GKB-356",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "Legal entitlement to demanded work made MGNREGA demand-driven; R explains A.",
+  "source": "MGNREGA 2005 s.3"
+ },
+ {
+  "id": "MGT-076",
+  "verdict": "pass",
+  "new_key": null,
+  "edit": null,
+  "reason": "McGregor, The Human Side of Enterprise (1960).",
+  "source": "https://en.wikipedia.org/wiki/Theory_X_and_Theory_Y"
+ }
+]

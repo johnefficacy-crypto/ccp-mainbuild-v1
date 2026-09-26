@@ -218,7 +218,7 @@ def add_all(B):
            (ds(plus(op, -30)), "thirty days used")],
           ["s.32(2): RHP shall be filed with the Registrar at least three days prior to the opening of the subscription list and the offer.",
            f"{ds(op)} − 3 days = {ds(last)}."],
-          "Filing date ≤ Opening date − 3 days", "Count back three clear days from the opening date.",
+          "Filing date ≤ Opening date − 3 days", "Count back three days from the opening date (16 − 3 = 13 November).",
           verify_fact=True, ref="Companies Act 2013 s.32(2)")
 
     B.add(M["rhp"], "L1",
@@ -261,7 +261,7 @@ def add_all(B):
 
     amt, late = 3.6e7, 40
     B.add(M["s39"], "L3",
-          f"Shaurya Pumps Ltd's public issue failed to receive the minimum subscription. Application money of {cr(amt)} that should have been refunded within 15 days of closure of the issue was repaid {late} days after the expiry of that 15-day period. The interest for which the directors who are officers in default are jointly and severally liable under s.39(3) read with Rule 11 is (365-day year):",
+          f"Shaurya Pumps Ltd's public issue failed to receive the minimum subscription. Application money of {cr(amt)} that should have been refunded within 15 days of closure of the issue was repaid {late} days after the expiry of that 15-day period. The interest for the {late}-day period of delay beyond the 15-day window, for which the directors who are officers in default are jointly and severally liable under s.39(3) read with Rule 11(1), is (365-day year):",
           R(interest(amt, 0.15, late)),
           [(R(interest(amt, 0.12, late)), "12% private-placement rate applied"),
            (R(interest(amt, 0.18, late)), "18% dividend-default rate applied"),

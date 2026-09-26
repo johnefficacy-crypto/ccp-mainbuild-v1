@@ -5668,7 +5668,7 @@ Choose the preposition or particle that correctly completes the sentence.
 
 She was not averse ______ taking on additional responsibilities.
 
-- **A.** from  _(error: common error - 'averse from' is not the standard exam form)_
+- **A.** for  _(error: wrong preposition)_
 - **B.** of  _(error: wrong preposition)_
 - **C.** to ✅
 - **D.** against  _(error: wrong preposition)_
@@ -5714,7 +5714,7 @@ Choose the preposition or particle that correctly completes the sentence.
 
 The government has decided to phase ______ older vehicles over the next five years.
 
-- **A.** down  _(error: wrong particle)_
+- **A.** over  _(error: wrong particle)_
 - **B.** out ✅
 - **C.** away  _(error: wrong particle)_
 - **D.** off  _(error: wrong particle)_

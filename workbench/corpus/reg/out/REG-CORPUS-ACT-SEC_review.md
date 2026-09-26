@@ -766,7 +766,7 @@ Under section 18A of the SCRA, one of the conditions under which contracts in de
 
 ## ACTS-030 · L1 · easy · SCRA — listing, delisting appeals and minimum public shareholding ⚠
 
-Under rule 19A of the SCRR, 1957, every listed company other than a public sector company shall maintain public shareholding of at least:
+Under rule 19A of the SCRR, 1957, every listed company shall maintain public shareholding of at least:
 
 - **A.** 25% ✅
 - **B.** 20%  _(error: understated threshold)_
@@ -775,7 +775,7 @@ Under rule 19A of the SCRR, 1957, every listed company other than a public secto
 
 **Working**
 
-1. Rule 19A(1): every listed company (other than a PSU) shall maintain public shareholding of at least 25%.
+1. Rule 19A(1): every listed company (the PSU carve-out was omitted by the SCRR amendment of 2014; PSUs got separate transition timelines) shall maintain public shareholding of at least 25%.
 2. Rule 19A(2): if it falls below, restore within a maximum of twelve months.
 
 **Formula:** SCRR r.19A(1)  

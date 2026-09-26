@@ -1458,7 +1458,7 @@ The subscription list of Parth Digital Ltd's public issue is to open on 16 Novem
 2. 16 November 2026 − 3 days = 13 November 2026.
 
 **Formula:** Filing date ≤ Opening date − 3 days  
-**Trap:** Count back three clear days from the opening date.
+**Trap:** Count back three days from the opening date (16 − 3 = 13 November).
 
 **Reviewer:** ☐ key ☐ stem ☐ distractors ☐ level ☐ fact — notes:
 
@@ -1539,7 +1539,7 @@ Under s.39(4) read with Rule 12 of the PAS Rules, a company making an allotment 
 
 ## CAB-061 · L3 · hard · s.39 minimum application money ⚠
 
-Shaurya Pumps Ltd's public issue failed to receive the minimum subscription. Application money of ₹3.60 crore that should have been refunded within 15 days of closure of the issue was repaid 40 days after the expiry of that 15-day period. The interest for which the directors who are officers in default are jointly and severally liable under s.39(3) read with Rule 11 is (365-day year):
+Shaurya Pumps Ltd's public issue failed to receive the minimum subscription. Application money of ₹3.60 crore that should have been refunded within 15 days of closure of the issue was repaid 40 days after the expiry of that 15-day period. The interest for the 40-day period of delay beyond the 15-day window, for which the directors who are officers in default are jointly and severally liable under s.39(3) read with Rule 11(1), is (365-day year):
 
 - **A.** ₹8,13,699  _(error: interest counted from closure of the issue)_
 - **B.** ₹5,91,781 ✅

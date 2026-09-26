@@ -1817,10 +1817,10 @@
       "difficulty": "easy",
       "question_kind": "conceptual",
       "stimulus_group": null,
-      "stem": "Under rule 19A of the SCRR, 1957, every listed company other than a public sector company shall maintain public shareholding of at least:",
+      "stem": "Under rule 19A of the SCRR, 1957, every listed company shall maintain public shareholding of at least:",
       "explanation": {
         "steps": [
-          "Rule 19A(1): every listed company (other than a PSU) shall maintain public shareholding of at least 25%.",
+          "Rule 19A(1): every listed company (the PSU carve-out was omitted by the SCRR amendment of 2014; PSUs got separate transition timelines) shall maintain public shareholding of at least 25%.",
           "Rule 19A(2): if it falls below, restore within a maximum of twelve months."
         ],
         "formula_used": "SCRR r.19A(1)",

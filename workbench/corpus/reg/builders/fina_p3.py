@@ -629,7 +629,7 @@ def add_all(B):
     lipf = anc * (0.40 - 1 / 3)
     assert round(anc / 3 / 1e7, 2) == 0.60 and round(lipf / 1e7, 2) == 0.12
     stim150 = stim.replace("one-third of the anchor portion reserved for domestic mutual funds.",
-                           "40% of the anchor portion reserved — one-third for domestic mutual funds and the balance for life insurers and pension funds (any unsubscribed part of the latter available to mutual funds).")
+                           "40% of the anchor portion reserved — one-third of the anchor portion (33.33%) for domestic mutual funds and the remaining 6.67% of the anchor portion for life insurers and pension funds (any unsubscribed part of the latter available to mutual funds).")
     assert stim150 != stim
     A(ANC, "L4", stim150 + "\n\nThe maximum number of shares that can be allocated to anchor investors, and the minimum reserved for domestic mutual funds within it, are:",
       f"{anc/1e7:.2f} crore shares; {anc/3/1e7:.2f} crore shares",
