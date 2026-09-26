@@ -4077,7 +4077,7 @@ Which of the statements given above is/are correct?
 | Profit after tax (latest year) | ₹540 crore |
 | Employee / shareholder reservation | Nil |
 
-Assume allocation norms: QIBs not more than 50% of the net offer; anchor investors up to 60% of the QIB portion, 40% of the anchor portion reserved — one-third for domestic mutual funds and the balance for life insurers and pension funds (any unsubscribed part of the latter available to mutual funds).
+Assume allocation norms: QIBs not more than 50% of the net offer; anchor investors up to 60% of the QIB portion, 40% of the anchor portion reserved — one-third of the anchor portion (33.33%) for domestic mutual funds and the remaining 6.67% of the anchor portion for life insurers and pension funds (any unsubscribed part of the latter available to mutual funds).
 
 The maximum number of shares that can be allocated to anchor investors, and the minimum reserved for domestic mutual funds within it, are:
 

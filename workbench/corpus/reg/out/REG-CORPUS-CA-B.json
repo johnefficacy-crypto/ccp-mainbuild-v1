@@ -3410,7 +3410,7 @@
           "16 November 2026 − 3 days = 13 November 2026."
         ],
         "formula_used": "Filing date ≤ Opening date − 3 days",
-        "trap": "Count back three clear days from the opening date."
+        "trap": "Count back three days from the opening date (16 − 3 = 13 November)."
       },
       "source_kind": "authored",
       "provenance": "ai_drafted",
@@ -3643,7 +3643,7 @@
       "difficulty": "hard",
       "question_kind": "numerical",
       "stimulus_group": null,
-      "stem": "Shaurya Pumps Ltd's public issue failed to receive the minimum subscription. Application money of ₹3.60 crore that should have been refunded within 15 days of closure of the issue was repaid 40 days after the expiry of that 15-day period. The interest for which the directors who are officers in default are jointly and severally liable under s.39(3) read with Rule 11 is (365-day year):",
+      "stem": "Shaurya Pumps Ltd's public issue failed to receive the minimum subscription. Application money of ₹3.60 crore that should have been refunded within 15 days of closure of the issue was repaid 40 days after the expiry of that 15-day period. The interest for the 40-day period of delay beyond the 15-day window, for which the directors who are officers in default are jointly and severally liable under s.39(3) read with Rule 11(1), is (365-day year):",
       "explanation": {
         "steps": [
           "Rule 11(1) PAS: if application money is not repaid within 15 days from closure of issue, officers in default are jointly and severally liable to repay with interest @ 15% p.a.",

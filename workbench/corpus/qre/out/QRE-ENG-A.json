@@ -11726,9 +11726,9 @@
       ],
       "options": [
         {
-          "text": "from",
+          "text": "for",
           "is_correct": false,
-          "error": "common error - 'averse from' is not the standard exam form",
+          "error": "wrong preposition",
           "label": "A"
         },
         {
@@ -11840,7 +11840,7 @@
       ],
       "options": [
         {
-          "text": "down",
+          "text": "over",
           "is_correct": false,
           "error": "wrong particle",
           "label": "A"
